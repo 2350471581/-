@@ -32,6 +32,8 @@ import com.example.billtracker.data.AIBillService
 import com.example.billtracker.data.AIParseResult
 import com.example.billtracker.data.TransactionType
 import kotlinx.coroutines.launch
+import androidx.activity.compose.BackHandler
+import com.example.billtracker.viewmodel.MainViewModel
 
 private data class ChatMessage(
     val text: String,
@@ -45,7 +47,8 @@ private data class ChatMessage(
 @Composable
 fun AIChatScreen(
     onBack: () -> Unit,
-    onAddTransaction: (Double, TransactionType, String) -> Unit
+    onAddTransaction: (Double, TransactionType, String) -> Unit,
+    viewModel: MainViewModel
 ) {
     val aiService = remember { AIBillService() }
     var messages by remember { mutableStateOf(listOf<ChatMessage>()) }
@@ -66,6 +69,9 @@ fun AIChatScreen(
             )
         )
     }
+
+    // 系统返回键
+    BackHandler(onBack = onBack)
 
     // 自动滚动到底部
     LaunchedEffect(messages.size) {
@@ -153,7 +159,15 @@ fun AIChatScreen(
                                 messages = messages.map {
                                     if (it == msg) it.copy(isConfirmed = true) else it
                                 }
-                                scope.launch { snackbarHostState.showSnackbar("已添加账单") }
+                                scope.launch {
+                                    snackbarHostState.showSnackbar("已添加账单")
+                                    // AI 根据账单给出上下文回复
+                                    val summary = viewModel.getTodaySummary()
+                                    val reply = aiService.chatWithContext(msg.parseResult!!, summary)
+                                    if (reply != null) {
+                                        messages = messages + ChatMessage(text = reply, isUser = false)
+                                    }
+                                }
                             }
                         } else null,
                         onCancel = if (!msg.isUser && msg.parseResult != null && !msg.isConfirmed) {

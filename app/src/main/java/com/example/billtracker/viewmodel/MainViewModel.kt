@@ -467,4 +467,31 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private val dao = com.example.billtracker.data.AppDatabase.getInstance(getApplication()).transactionDao()
+
+    suspend fun getTodaySummary(): String = withContext(Dispatchers.IO) {
+        val calendar = Calendar.getInstance()
+        calendar.set(Calendar.HOUR_OF_DAY, 0); calendar.set(Calendar.MINUTE, 0)
+        calendar.set(Calendar.SECOND, 0); calendar.set(Calendar.MILLISECOND, 0)
+        val start = calendar.timeInMillis
+        val end = start + 86400000L
+
+        val tx = dao.getTransactionsBetweenSync(start, end)
+        val income = tx.filter { it.type == TransactionType.INCOME }.sumOf { it.amount }
+        val expense = tx.filter { it.type == TransactionType.EXPENSE }.sumOf { it.amount }
+        val count = tx.size
+
+        buildString {
+            appendLine("今日账单概况（截至${"HH:mm".let { java.text.SimpleDateFormat(it, Locale.getDefault()).format(java.util.Date()) }}）：")
+            appendLine("收入：¥${"%.2f".format(income)}")
+            appendLine("支出：¥${"%.2f".format(expense)}")
+            appendLine("交易笔数：$count")
+            if (tx.isNotEmpty()) {
+                append("最近几笔：")
+                tx.take(5).forEachIndexed { i, t ->
+                    val type = if (t.type == TransactionType.INCOME) "收入" else "支出"
+                    append("${if (i > 0) "；" else ""}${t.description} ${type}¥${"%.2f".format(t.amount)}")
+                }
+            }
+        }
+    }
 }

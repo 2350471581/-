@@ -1,8 +1,11 @@
 package com.example.billtracker.ui
 
 import android.Manifest
+import android.app.Activity
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.widget.Toast
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.Animatable
@@ -92,6 +95,8 @@ fun MainScreen(viewModel: MainViewModel = viewModel()) {
     var showAIChatTutorial by remember { mutableStateOf(false) }
     var showAiChatProfileTutorial by remember { mutableStateOf(false) }
 
+    var lastBackTime by remember { mutableLongStateOf(0L) }
+
     val isManualMode by viewModel.isManualMode.collectAsStateWithLifecycle()
     val aiChatEnabled by viewModel.aiChatEnabled.collectAsStateWithLifecycle()
     val aiChatTutorialDone by viewModel.aiChatTutorialDone.collectAsStateWithLifecycle()
@@ -134,6 +139,19 @@ fun MainScreen(viewModel: MainViewModel = viewModel()) {
         } else {
             // 切换到手动模式
             viewModel.setManualMode(true)
+        }
+    }
+
+    // ── 双击返回键退出 ──
+    val isInSubScreen = showAIChat || showAnalysis || showAIChatTutorial || showAiChatProfileTutorial
+    val isDialogOpen = showAddDialog || showAddPlanDialog || showDateFilterDialog || detailTransaction != null || showManualPlanAlert
+    BackHandler(enabled = !isInSubScreen && !isDialogOpen) {
+        val now = System.currentTimeMillis()
+        if (now - lastBackTime < 2000) {
+            (context as? Activity)?.finish()
+        } else {
+            lastBackTime = now
+            Toast.makeText(context, "再滑一次退出", Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -233,7 +251,8 @@ fun MainScreen(viewModel: MainViewModel = viewModel()) {
                     onBack = { showAIChat = false },
                     onAddTransaction = { amount, type, desc ->
                         viewModel.addTransaction(amount, type, desc)
-                    }
+                    },
+                    viewModel = viewModel
                 )
             } else if (selectedBottomTab == 0) {
                 // ── 权限提示条（仅在自动模式下显示） ──

@@ -1,5 +1,6 @@
 package com.example.billtracker.ui
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
@@ -39,6 +40,9 @@ fun AnalysisScreen(
     var selectedPeriodIndex by remember { mutableIntStateOf(0) }
     val transactions = remember { mutableStateOf<List<TransactionEntity>>(emptyList()) }
     val scope = rememberCoroutineScope()
+
+    // 系统返回键
+    BackHandler(onBack = onBack)
 
     // 加载数据
     LaunchedEffect(selectedPeriodIndex) {

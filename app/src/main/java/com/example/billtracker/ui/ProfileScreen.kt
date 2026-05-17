@@ -26,6 +26,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -33,6 +34,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import com.example.billtracker.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -60,6 +62,7 @@ fun ProfileScreen(
     var showClearConfirm by remember { mutableStateOf(false) }
     var showExportDialog by remember { mutableStateOf(false) }
     var showAboutDialog by remember { mutableStateOf(false) }
+    var showDonateDialog by remember { mutableStateOf(false) }
     var showUpdateDialog by remember { mutableStateOf(false) }
     var updateState by remember { mutableStateOf("") } // checking | available | up_to_date | downloading | downloaded | error
     var updateInfo by remember { mutableStateOf<com.example.billtracker.data.UpdateInfo?>(null) }
@@ -201,6 +204,8 @@ fun ProfileScreen(
                     })
                 Divider(modifier = Modifier.padding(horizontal = 16.dp), color = Color(0xFFF1F3F4))
                 ProfileMenuItem(Icons.Default.SystemUpdate, "检查更新", { showUpdateDialog = true })
+                Divider(modifier = Modifier.padding(horizontal = 16.dp), color = Color(0xFFF1F3F4))
+                ProfileMenuItem(Icons.Default.Favorite, "赞赏作者", { showDonateDialog = true }, tint = Color(0xFFE91E63))
                 Divider(modifier = Modifier.padding(horizontal = 16.dp), color = Color(0xFFF1F3F4))
                 ProfileMenuItem(Icons.Default.Info, "关于", { showAboutDialog = true })
                 Divider(modifier = Modifier.padding(horizontal = 16.dp), color = Color(0xFFF1F3F4))
@@ -633,6 +638,48 @@ fun ProfileScreen(
                 }
             }
         }
+    }
+
+    // ── 赞赏作者弹窗 ──
+    if (showDonateDialog) {
+        AlertDialog(
+            onDismissRequest = { showDonateDialog = false },
+            shape = RoundedCornerShape(20.dp),
+            title = {
+                Text("赞赏作者", fontWeight = FontWeight.Bold, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
+            },
+            text = {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        "如果这个应用对你有帮助，欢迎赞赏支持！",
+                        fontSize = 14.sp, color = Color(0xFF5F6368),
+                        textAlign = TextAlign.Center
+                    )
+                    Spacer(Modifier.height(16.dp))
+                    Image(
+                        painter = painterResource(id = R.drawable.zsm),
+                        contentDescription = "赞赏码",
+                        modifier = Modifier.size(240.dp),
+                        contentScale = ContentScale.Fit
+                    )
+                    Spacer(Modifier.height(12.dp))
+                    Text(
+                        "微信 / 支付宝 扫码赞赏",
+                        fontSize = 12.sp, color = Color(0xFF9AA0A6),
+                        textAlign = TextAlign.Center
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showDonateDialog = false }) {
+                    Text("关闭", color = Color(0xFF5F6368))
+                }
+            }
+        )
     }
 
     // ── 检查更新弹窗 ──

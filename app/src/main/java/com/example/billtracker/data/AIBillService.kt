@@ -105,6 +105,45 @@ class AIBillService {
         }
     }
 
+    // AI 根据已添加账单生成上下文回复
+    suspend fun chatWithContext(transaction: AIParseResult, summary: String): String? = withContext(Dispatchers.IO) {
+        try {
+            val systemPrompt = "你是一个亲切的记账助手。用户刚添加了一笔账单，请根据用户的消费概况给出友好的回复。" +
+                    "回复要简短亲切（50字以内），语气自然，可以包含简单的财务提醒或鼓励。" +
+                    "不要使用markdown格式，不要加引号，直接说内容。"
+            val userMsg = "刚添加的账单：${transaction.description}，${if (transaction.type == TransactionType.INCOME) "收入" else "支出"}${transaction.amount}元\n\n$summary"
+
+            val body = JSONObject().apply {
+                put("model", "deepseek-chat")
+                put("messages", JSONArray(listOf(
+                    JSONObject().apply { put("role", "system"); put("content", systemPrompt) },
+                    JSONObject().apply { put("role", "user"); put("content", userMsg) }
+                )))
+                put("temperature", 0.7)
+                put("max_tokens", 256)
+            }
+
+            val conn = URL(apiUrl).openConnection() as HttpURLConnection
+            conn.requestMethod = "POST"
+            conn.setRequestProperty("Content-Type", "application/json")
+            conn.setRequestProperty("Authorization", "Bearer $apiKey")
+            conn.doOutput = true
+            conn.connectTimeout = 10000
+            conn.readTimeout = 10000
+
+            try {
+                OutputStreamWriter(conn.outputStream).use { it.write(body.toString()) }
+                if (conn.responseCode != 200) return@withContext null
+                val json = BufferedReader(InputStreamReader(conn.inputStream)).readText()
+                val content = JSONObject(json).getJSONArray("choices")
+                    .getJSONObject(0).getJSONObject("message")
+                    .getString("content").trim()
+                content.removeSurrounding("\"").take(200)
+            } catch (_: Exception) { null }
+            finally { conn.disconnect() }
+        } catch (_: Exception) { null }
+    }
+
     private fun localParse(text: String): AIParseResult? {
         val amount = extractAmount(text) ?: return null
         val type = detectType(text)
