@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">记账助手</string>
+    <string name="today_summary">今日账单</string>
+    <string name="income">收入</string>
+    <string name="expense">支出</string>
+    <string name="net_income">净收入</string>
+    <string name="today_detail">今日明细</string>
+    <string name="all_records">全部记录</string>
+    <string name="no_transactions_today">今天还没有账单记录</string>
+    <string name="no_transactions">暂无记录</string>
+    <string name="grant_sms_permission">需要短信权限来读取账单</string>
+    <string name="grant_permission">授予权限</string>
+    <string name="source_wechat">微信</string>
+    <string name="source_alipay">支付宝</string>
+    <string name="source_manual">手动</string>
+    <string name="today">今天</string>
+    <string name="yesterday">昨天</string>
+    <string name="sms_permission_denied">短信权限被拒绝，无法自动读取账单</string>
+</resources>

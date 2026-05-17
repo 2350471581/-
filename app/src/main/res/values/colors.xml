@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="income_color">#FF4CAF50</color>
+    <color name="expense_color">#FFF44336</color>
+    <color name="wechat_color">#FF07C160</color>
+    <color name="alipay_color">#FF1677FF</color>
+    <color name="bg_light">#FFF5F5F5</color>
+</resources>

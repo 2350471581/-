@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- 简化记账图标 - 算盘形状 -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M34,40h40v4H34zM34,48h40v4H34zM34,56h40v4H34zM34,64h40v4H34zM38,36v-4h6v4zM48,36v-4h6v4zM58,36v-4h6v4z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M30,32h48v40H30z"
+        android:strokeWidth="2"
+        android:strokeColor="#FFFFFF"
+        android:fillAlpha="0" />
+</vector>
