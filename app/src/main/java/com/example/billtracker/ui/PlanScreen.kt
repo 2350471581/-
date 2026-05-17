@@ -5,6 +5,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -12,8 +13,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.TrendingUp
-import androidx.compose.material.icons.filled.TrendingDown
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -71,7 +70,7 @@ fun PlanScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFFF8F9FA))
+            .background(Color.Transparent)
             .verticalScroll(rememberScrollState())
             .padding(16.dp)
     ) {
@@ -218,15 +217,18 @@ private fun BalanceCard(
     }
     var isEditing by remember { mutableStateOf(false) }
 
+    val isDark = isSystemInDarkTheme()
+    val frostedCardColor = if (isDark) Color(0xFF2A2A2A).copy(alpha = 0.88f) else Color.White.copy(alpha = 0.88f)
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(20.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White)
+        colors = CardDefaults.cardColors(containerColor = frostedCardColor)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("余额", fontSize = 12.sp, color = Color(0xFF5F6368))
+                Text("余额", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Spacer(Modifier.weight(1f))
                 TextButton(
                     onClick = {
@@ -240,7 +242,7 @@ private fun BalanceCard(
                     Text(
                         if (isEditing) "完成" else "编辑",
                         fontSize = 12.sp,
-                        color = Color(0xFFE8824A)
+                        color = MaterialTheme.colorScheme.primary
                     )
                 }
             }
@@ -257,8 +259,8 @@ private fun BalanceCard(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp),
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = Color(0xFFE8824A),
-                        unfocusedBorderColor = Color(0xFFDADCE0)
+                        focusedBorderColor = MaterialTheme.colorScheme.primary,
+                        unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)
                     ),
                     textStyle = LocalTextStyle.current.copy(fontSize = 24.sp, fontWeight = FontWeight.Bold)
                 )
@@ -267,7 +269,7 @@ private fun BalanceCard(
                     text = "¥%.2f".format(balance),
                     fontSize = 28.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Color(0xFFE8824A),
+                    color = MaterialTheme.colorScheme.primary,
                     letterSpacing = 1.sp,
                     modifier = Modifier.clickable { isEditing = true }
                 )
@@ -276,7 +278,7 @@ private fun BalanceCard(
                     text = "点击设置余额",
                     fontSize = 20.sp,
                     fontWeight = FontWeight.Medium,
-                    color = Color(0xFFBDBDBD),
+                    color = MaterialTheme.colorScheme.outline,
                     modifier = Modifier.clickable {
                         balanceText = ""
                         isEditing = true
@@ -289,7 +291,7 @@ private fun BalanceCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(1.dp)
-                    .background(Color(0xFFF1F3F4))
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
             )
             Spacer(Modifier.height(12.dp))
 
@@ -298,7 +300,7 @@ private fun BalanceCard(
                 horizontalArrangement = Arrangement.SpaceEvenly
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("今日收入", fontSize = 11.sp, color = Color(0xFF9AA0A6))
+                    Text("今日收入", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f))
                     Text(
                         "¥%.2f".format(todayIncome),
                         fontSize = 14.sp,
@@ -310,10 +312,10 @@ private fun BalanceCard(
                     modifier = Modifier
                         .width(1.dp)
                         .height(30.dp)
-                        .background(Color(0xFFF1F3F4))
+                        .background(MaterialTheme.colorScheme.surfaceVariant)
                 )
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("总收入", fontSize = 11.sp, color = Color(0xFF9AA0A6))
+                    Text("总收入", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f))
                     Text(
                         "¥%.2f".format(totalIncome),
                         fontSize = 14.sp,
@@ -335,16 +337,19 @@ fun PlanCard(
     note: String,
     onClick: () -> Unit
 ) {
+    val isDark = isSystemInDarkTheme()
+    val frostedCardColor = if (isDark) Color(0xFF2A2A2A).copy(alpha = 0.88f) else Color.White.copy(alpha = 0.88f)
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .clickable { onClick() },
         shape = RoundedCornerShape(20.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White)
+        colors = CardDefaults.cardColors(containerColor = frostedCardColor)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Text(title, fontSize = 12.sp, color = Color(0xFF5F6368))
+            Text(title, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Spacer(Modifier.height(4.dp))
 
             if (target <= 0) {
@@ -353,13 +358,13 @@ fun PlanCard(
                     text = "无计划",
                     fontSize = 20.sp,
                     fontWeight = FontWeight.Medium,
-                    color = Color(0xFFBDBDBD)
+                    color = MaterialTheme.colorScheme.outline
                 )
                 Spacer(Modifier.height(2.dp))
                 Text(
                     text = "点击设置目标金额",
                     fontSize = 12.sp,
-                    color = Color(0xFFBDBDBD)
+                    color = MaterialTheme.colorScheme.outline
                 )
             } else {
                 // 目标金额
@@ -367,47 +372,47 @@ fun PlanCard(
                     text = "目标 ¥%.2f".format(target),
                     fontSize = 22.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Color(0xFFE8824A),
+                    color = MaterialTheme.colorScheme.primary,
                     letterSpacing = 0.5.sp
                 )
 
                 Spacer(Modifier.height(6.dp))
 
-                    // 进度信息
-                    val progress = (currentAmount / target).coerceIn(0.0, 1.0)
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(
-                            text = "当前 ¥%.2f".format(currentAmount),
-                            fontSize = 13.sp,
-                            color = if (currentAmount >= target) IncomeGreen else Color(0xFF5F6368)
-                        )
-                        Spacer(Modifier.width(8.dp))
-                        Text(
-                            text = "%d%%".format((progress * 100).toInt()),
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = if (progress >= 1f) IncomeGreen else Color(0xFF9AA0A6)
-                        )
-                    }
+                // 进度信息
+                val progress = (currentAmount / target).coerceIn(0.0, 1.0)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = "当前 ¥%.2f".format(currentAmount),
+                        fontSize = 13.sp,
+                        color = if (currentAmount >= target) IncomeGreen else MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        text = "%d%%".format((progress * 100).toInt()),
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = if (progress >= 1f) IncomeGreen else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                    )
+                }
 
-                    // 进度条
-                    Spacer(Modifier.height(8.dp))
+                // 进度条
+                Spacer(Modifier.height(8.dp))
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(6.dp)
+                        .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(3.dp))
+                ) {
                     Box(
                         modifier = Modifier
-                            .fillMaxWidth()
-                            .height(6.dp)
-                            .background(Color(0xFFF1F3F4), RoundedCornerShape(3.dp))
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth(progress.toFloat())
-                                .fillMaxHeight()
-                                .background(
-                                    if (progress >= 1f) IncomeGreen else Color(0xFFE8824A),
-                                    RoundedCornerShape(3.dp)
-                                )
-                        )
-                    }
+                            .fillMaxWidth(progress.toFloat())
+                            .fillMaxHeight()
+                            .background(
+                                if (progress >= 1f) IncomeGreen else MaterialTheme.colorScheme.primary,
+                                RoundedCornerShape(3.dp)
+                            )
+                    )
+                }
             }
 
             if (note.isNotBlank()) {
@@ -416,13 +421,13 @@ fun PlanCard(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(1.dp)
-                        .background(Color(0xFFF1F3F4))
+                        .background(MaterialTheme.colorScheme.surfaceVariant)
                 )
                 Spacer(Modifier.height(10.dp))
                 Text(
                     text = note,
                     fontSize = 13.sp,
-                    color = Color(0xFF5F6368),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     lineHeight = 18.sp
                 )
             }
@@ -521,6 +526,9 @@ fun PlanDetailDialog(
     }
     var noteInput by remember { mutableStateOf(note) }
 
+    val isDark = isSystemInDarkTheme()
+    val frostedCardColor = if (isDark) Color(0xFF2A2A2A).copy(alpha = 0.88f) else Color.White.copy(alpha = 0.88f)
+
     Dialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false)
@@ -531,7 +539,7 @@ fun PlanDetailDialog(
                 .fillMaxHeight(0.55f),
             shape = RoundedCornerShape(24.dp),
             elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
-            colors = CardDefaults.cardColors(containerColor = Color.White)
+            colors = CardDefaults.cardColors(containerColor = frostedCardColor)
         ) {
             Column(
                 modifier = Modifier
@@ -543,12 +551,12 @@ fun PlanDetailDialog(
                     text = title,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.SemiBold,
-                    color = Color(0xFF5F6368)
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Spacer(Modifier.height(16.dp))
 
                 // ── 目标金额输入 ──
-                Text("目标金额", fontSize = 12.sp, color = Color(0xFF5F6368))
+                Text("目标金额", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Spacer(Modifier.height(4.dp))
                 OutlinedTextField(
                     value = targetText,
@@ -568,13 +576,13 @@ fun PlanDetailDialog(
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(10.dp),
-                    color = Color(0xFFF1F3F4)
+                    color = MaterialTheme.colorScheme.surfaceVariant
                 ) {
                     Text(
                         text = if (currentAmount > 0) "当前进度: ¥%.2f".format(currentAmount) else "您还没有设置余额",
                         modifier = Modifier.padding(12.dp),
                         fontSize = 13.sp,
-                        color = if (currentAmount > 0) Color(0xFF5F6368) else Color(0xFFBDBDBD)
+                        color = if (currentAmount > 0) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.outline
                     )
                 }
 
@@ -585,7 +593,7 @@ fun PlanDetailDialog(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(1.dp)
-                        .background(Color(0xFFF1F3F4))
+                        .background(MaterialTheme.colorScheme.surfaceVariant)
                 )
                 Spacer(Modifier.height(12.dp))
 
@@ -594,7 +602,7 @@ fun PlanDetailDialog(
                     text = "备注",
                     fontSize = 12.sp,
                     fontWeight = FontWeight.SemiBold,
-                    color = Color(0xFF5F6368)
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Spacer(Modifier.height(6.dp))
 
@@ -607,8 +615,8 @@ fun PlanDetailDialog(
                         .weight(1f),
                     shape = RoundedCornerShape(12.dp),
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = Color(0xFFE8824A),
-                        unfocusedBorderColor = Color(0xFFDADCE0)
+                        focusedBorderColor = MaterialTheme.colorScheme.primary,
+                        unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)
                     )
                 )
 
@@ -621,7 +629,7 @@ fun PlanDetailDialog(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     TextButton(onClick = onDismiss) {
-                        Text("取消", color = Color(0xFF5F6368))
+                        Text("取消", color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                     Spacer(Modifier.width(8.dp))
                     Button(
@@ -630,7 +638,7 @@ fun PlanDetailDialog(
                             onSave(t, noteInput)
                         },
                         shape = RoundedCornerShape(10.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE8824A))
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
                     ) {
                         Text("保存", color = Color.White)
                     }
@@ -655,8 +663,11 @@ fun SavePlanCard(
     val barColor = when {
         progress >= 1f -> ExpenseRed
         progress >= 0.7f -> Color(0xFFFF9800)
-        else -> Color(0xFFE8824A)
+        else -> MaterialTheme.colorScheme.primary
     }
+
+    val isDark = isSystemInDarkTheme()
+    val frostedCardColor = if (isDark) Color(0xFF2A2A2A).copy(alpha = 0.88f) else Color.White.copy(alpha = 0.88f)
 
     Card(
         modifier = Modifier
@@ -664,10 +675,10 @@ fun SavePlanCard(
             .clickable { onClick() },
         shape = RoundedCornerShape(20.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White)
+        colors = CardDefaults.cardColors(containerColor = frostedCardColor)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Text("省钱计划", fontSize = 12.sp, color = Color(0xFF5F6368))
+            Text("省钱计划", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Spacer(Modifier.height(4.dp))
 
             if (target <= 0) {
@@ -675,13 +686,13 @@ fun SavePlanCard(
                     text = "无计划",
                     fontSize = 20.sp,
                     fontWeight = FontWeight.Medium,
-                    color = Color(0xFFBDBDBD)
+                    color = MaterialTheme.colorScheme.outline
                 )
                 Spacer(Modifier.height(2.dp))
                 Text(
                     text = "点击设置目标金额",
                     fontSize = 12.sp,
-                    color = Color(0xFFBDBDBD)
+                    color = MaterialTheme.colorScheme.outline
                 )
             } else {
                 if (isOverBudget) {
@@ -697,7 +708,7 @@ fun SavePlanCard(
                         text = "还可以花 ¥%.2f".format(remaining),
                         fontSize = 22.sp,
                         fontWeight = FontWeight.Bold,
-                        color = Color(0xFFE8824A),
+                        color = MaterialTheme.colorScheme.primary,
                         letterSpacing = 0.5.sp
                     )
                 }
@@ -708,14 +719,14 @@ fun SavePlanCard(
                     Text(
                         text = "今日支出 ¥%.2f".format(todayExpense),
                         fontSize = 13.sp,
-                        color = if (isOverBudget) ExpenseRed else Color(0xFF5F6368)
+                        color = if (isOverBudget) ExpenseRed else MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Spacer(Modifier.width(8.dp))
                     Text(
                         text = "%d%%".format((progress * 100).toInt()),
                         fontSize = 13.sp,
                         fontWeight = FontWeight.SemiBold,
-                        color = if (progress >= 1f) ExpenseRed else if (progress >= 0.7f) Color(0xFFFF9800) else Color(0xFF9AA0A6)
+                        color = if (progress >= 1f) ExpenseRed else if (progress >= 0.7f) Color(0xFFFF9800) else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
                     )
                 }
 
@@ -724,7 +735,7 @@ fun SavePlanCard(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(6.dp)
-                        .background(Color(0xFFF1F3F4), RoundedCornerShape(3.dp))
+                        .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(3.dp))
                 ) {
                     Box(
                         modifier = Modifier
@@ -741,13 +752,13 @@ fun SavePlanCard(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(1.dp)
-                        .background(Color(0xFFF1F3F4))
+                        .background(MaterialTheme.colorScheme.surfaceVariant)
                 )
                 Spacer(Modifier.height(10.dp))
                 Text(
                     text = note,
                     fontSize = 13.sp,
-                    color = Color(0xFF5F6368),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     lineHeight = 18.sp
                 )
             }
@@ -769,6 +780,9 @@ fun SavePlanDetailDialog(
     }
     var noteInput by remember { mutableStateOf(note) }
 
+    val isDark = isSystemInDarkTheme()
+    val frostedCardColor = if (isDark) Color(0xFF2A2A2A).copy(alpha = 0.88f) else Color.White.copy(alpha = 0.88f)
+
     Dialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false)
@@ -779,7 +793,7 @@ fun SavePlanDetailDialog(
                 .fillMaxHeight(0.55f),
             shape = RoundedCornerShape(24.dp),
             elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
-            colors = CardDefaults.cardColors(containerColor = Color.White)
+            colors = CardDefaults.cardColors(containerColor = frostedCardColor)
         ) {
             Column(
                 modifier = Modifier
@@ -790,11 +804,11 @@ fun SavePlanDetailDialog(
                     text = "省钱计划",
                     fontSize = 14.sp,
                     fontWeight = FontWeight.SemiBold,
-                    color = Color(0xFF5F6368)
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Spacer(Modifier.height(16.dp))
 
-                Text("目标金额", fontSize = 12.sp, color = Color(0xFF5F6368))
+                Text("目标金额", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Spacer(Modifier.height(4.dp))
                 OutlinedTextField(
                     value = targetText,
@@ -813,13 +827,13 @@ fun SavePlanDetailDialog(
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(10.dp),
-                    color = Color(0xFFF1F3F4)
+                    color = MaterialTheme.colorScheme.surfaceVariant
                 ) {
                     Text(
                         text = "今日支出: ¥%.2f".format(todayExpense),
                         modifier = Modifier.padding(12.dp),
                         fontSize = 13.sp,
-                        color = Color(0xFF5F6368)
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
 
@@ -828,7 +842,7 @@ fun SavePlanDetailDialog(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(1.dp)
-                        .background(Color(0xFFF1F3F4))
+                        .background(MaterialTheme.colorScheme.surfaceVariant)
                 )
                 Spacer(Modifier.height(12.dp))
 
@@ -836,7 +850,7 @@ fun SavePlanDetailDialog(
                     text = "备注",
                     fontSize = 12.sp,
                     fontWeight = FontWeight.SemiBold,
-                    color = Color(0xFF5F6368)
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Spacer(Modifier.height(6.dp))
 
@@ -849,8 +863,8 @@ fun SavePlanDetailDialog(
                         .weight(1f),
                     shape = RoundedCornerShape(12.dp),
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = Color(0xFFE8824A),
-                        unfocusedBorderColor = Color(0xFFDADCE0)
+                        focusedBorderColor = MaterialTheme.colorScheme.primary,
+                        unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)
                     )
                 )
 
@@ -861,7 +875,7 @@ fun SavePlanDetailDialog(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     TextButton(onClick = onDismiss) {
-                        Text("取消", color = Color(0xFF5F6368))
+                        Text("取消", color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                     Spacer(Modifier.width(8.dp))
                     Button(
@@ -870,7 +884,7 @@ fun SavePlanDetailDialog(
                             onSave(t, noteInput)
                         },
                         shape = RoundedCornerShape(10.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE8824A))
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
                     ) {
                         Text("保存", color = Color.White)
                     }
@@ -904,7 +918,7 @@ fun AddPlanDialog(
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 // 计划名称（可编辑）
-                Text("计划名称", fontSize = 13.sp, fontWeight = FontWeight.Medium, color = Color(0xFF5F6368))
+                Text("计划名称", fontSize = 13.sp, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 OutlinedTextField(
                     value = planName,
                     onValueChange = { planName = it; nameError = false },
@@ -917,7 +931,7 @@ fun AddPlanDialog(
                 )
 
                 // 选择类型
-                Text("选择类型", fontSize = 13.sp, fontWeight = FontWeight.Medium, color = Color(0xFF5F6368))
+                Text("选择类型", fontSize = 13.sp, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 // 第一行：今日收入/今日支出/今日净收入
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -930,8 +944,8 @@ fun AddPlanDialog(
                             label = { Text(type.displayName(), fontSize = 11.sp) },
                             modifier = Modifier.weight(1f),
                             colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = Color(0xFFE8824A).copy(alpha = 0.12f),
-                                selectedLabelColor = Color(0xFFE8824A)
+                                selectedContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
+                                selectedLabelColor = MaterialTheme.colorScheme.primary
                             )
                         )
                     }
@@ -948,15 +962,15 @@ fun AddPlanDialog(
                             label = { Text(type.displayName(), fontSize = 11.sp) },
                             modifier = Modifier.weight(1f),
                             colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = Color(0xFFE8824A).copy(alpha = 0.12f),
-                                selectedLabelColor = Color(0xFFE8824A)
+                                selectedContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
+                                selectedLabelColor = MaterialTheme.colorScheme.primary
                             )
                         )
                     }
                 }
 
                 // 设置金额
-                Text("设置金额", fontSize = 13.sp, fontWeight = FontWeight.Medium, color = Color(0xFF5F6368))
+                Text("设置金额", fontSize = 13.sp, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 OutlinedTextField(
                     value = amountText,
                     onValueChange = { amountText = it; amountError = false },
@@ -971,7 +985,7 @@ fun AddPlanDialog(
                 )
 
                 // 备注
-                Text("备注", fontSize = 13.sp, fontWeight = FontWeight.Medium, color = Color(0xFF5F6368))
+                Text("备注", fontSize = 13.sp, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 OutlinedTextField(
                     value = note,
                     onValueChange = { note = it },
@@ -995,14 +1009,14 @@ fun AddPlanDialog(
                     }
                 },
                 shape = RoundedCornerShape(10.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE8824A))
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
             ) {
                 Text("添加", modifier = Modifier.padding(horizontal = 16.dp))
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("取消", color = Color(0xFF5F6368))
+                Text("取消", color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
     )

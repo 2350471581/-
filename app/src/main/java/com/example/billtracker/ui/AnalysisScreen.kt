@@ -4,6 +4,7 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -15,10 +16,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.nativeCanvas
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -26,7 +25,6 @@ import androidx.compose.ui.unit.sp
 import com.example.billtracker.data.TransactionEntity
 import com.example.billtracker.data.TransactionType
 import com.example.billtracker.viewmodel.MainViewModel
-import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -39,8 +37,6 @@ fun AnalysisScreen(
     val periods = remember { viewModel.getAnalysisPeriods() }
     var selectedPeriodIndex by remember { mutableIntStateOf(0) }
     val transactions = remember { mutableStateOf<List<TransactionEntity>>(emptyList()) }
-    val scope = rememberCoroutineScope()
-
     // 系统返回键
     BackHandler(onBack = onBack)
 
@@ -61,6 +57,9 @@ fun AnalysisScreen(
             )
         }
     ) { padding ->
+        val isDark = isSystemInDarkTheme()
+        val frostedCardColor = if (isDark) Color(0xFF2A2A2A).copy(alpha = 0.88f) else Color.White.copy(alpha = 0.88f)
+
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -99,7 +98,7 @@ fun AnalysisScreen(
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
                 shape = RoundedCornerShape(16.dp),
                 elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+                colors = CardDefaults.cardColors(containerColor = frostedCardColor)
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth().padding(16.dp),
@@ -118,13 +117,13 @@ fun AnalysisScreen(
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
                 shape = RoundedCornerShape(16.dp),
                 elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+                colors = CardDefaults.cardColors(containerColor = frostedCardColor)
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text("收支对比", fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
                     Spacer(Modifier.height(12.dp))
                     if (txList.isEmpty()) {
-                        Text("暂无数据", color = Color(0xFF9AA0A6), modifier = Modifier.padding(vertical = 40.dp).fillMaxWidth(),
+                        Text("暂无数据", color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f), modifier = Modifier.padding(vertical = 40.dp).fillMaxWidth(),
                             textAlign = TextAlign.Center)
                     } else {
                         BarChart(txList, selectedPeriodIndex)
@@ -139,13 +138,13 @@ fun AnalysisScreen(
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
                 shape = RoundedCornerShape(16.dp),
                 elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+                colors = CardDefaults.cardColors(containerColor = frostedCardColor)
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text("支出分类", fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
                     Spacer(Modifier.height(12.dp))
                     if (txList.none { it.type == TransactionType.EXPENSE }) {
-                        Text("暂无支出数据", color = Color(0xFF9AA0A6), modifier = Modifier.padding(vertical = 40.dp).fillMaxWidth(),
+                        Text("暂无支出数据", color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f), modifier = Modifier.padding(vertical = 40.dp).fillMaxWidth(),
                             textAlign = TextAlign.Center)
                     } else {
                         PieChart(txList.filter { it.type == TransactionType.EXPENSE })
@@ -161,7 +160,7 @@ fun AnalysisScreen(
 @Composable
 private fun StatItem(label: String, value: String, color: Color) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(label, fontSize = 12.sp, color = Color(0xFF9AA0A6))
+        Text(label, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f))
         Spacer(Modifier.height(4.dp))
         Text(value, fontSize = 18.sp, fontWeight = FontWeight.Bold, color = color)
     }
@@ -188,6 +187,7 @@ private fun BarChart(txList: List<TransactionEntity>, periodIndex: Int) {
 
     val barWidth = 28f
     val gap = 12f
+    val labelColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
     val totalWidth = dayGroups.size * (barWidth * 2 + gap) + 32f
 
     Column {
@@ -228,7 +228,12 @@ private fun BarChart(txList: List<TransactionEntity>, periodIndex: Int) {
 
                 // 底部日期标签
                 val paint = android.graphics.Paint().apply {
-                    color = android.graphics.Color.parseColor("#9AA0A6")
+                    color = android.graphics.Color.argb(
+                        (labelColor.alpha * 255).toInt(),
+                        (labelColor.red * 255).toInt(),
+                        (labelColor.green * 255).toInt(),
+                        (labelColor.blue * 255).toInt()
+                    )
                     textSize = 28f
                     textAlign = android.graphics.Paint.Align.CENTER
                 }
@@ -296,8 +301,8 @@ private fun PieChart(expenses: List<TransactionEntity>) {
                             .background(colors[i % colors.size], RoundedCornerShape(2.dp))
                     )
                     Spacer(Modifier.width(6.dp))
-                    Text(cat, fontSize = 13.sp, color = Color(0xFF5F6368), modifier = Modifier.weight(1f))
-                    Text("%.1f%%".format(amount / total * 100), fontSize = 12.sp, color = Color(0xFF9AA0A6))
+                    Text(cat, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.weight(1f))
+                    Text("%.1f%%".format(amount / total * 100), fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f))
                 }
             }
         }
@@ -309,6 +314,6 @@ private fun LegendItem(label: String, color: Color) {
     Row(verticalAlignment = Alignment.CenterVertically) {
         Box(modifier = Modifier.size(10.dp).background(color, RoundedCornerShape(2.dp)))
         Spacer(Modifier.width(4.dp))
-        Text(label, fontSize = 11.sp, color = Color(0xFF9AA0A6))
+        Text(label, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f))
     }
 }

@@ -8,12 +8,15 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -49,6 +52,7 @@ fun ProfileScreen(
     onThemeChange: (Int) -> Unit,
     onClearAllData: () -> Unit,
     onNavigateToAnalysis: () -> Unit,
+    onNavigateToImport: () -> Unit = {},
     onExportCsv: (startMillis: Long, endMillis: Long) -> Unit,
     onExportImage: (startMillis: Long, endMillis: Long) -> Unit = { _, _ -> },
     aiChatEnabled: Boolean = false,
@@ -61,8 +65,7 @@ fun ProfileScreen(
     var showThemeDialog by remember { mutableStateOf(false) }
     var showClearConfirm by remember { mutableStateOf(false) }
     var showExportDialog by remember { mutableStateOf(false) }
-    var showAboutDialog by remember { mutableStateOf(false) }
-    var showDonateDialog by remember { mutableStateOf(false) }
+    var showAboutScreen by remember { mutableStateOf(false) }
     var showUpdateDialog by remember { mutableStateOf(false) }
     var updateState by remember { mutableStateOf("") } // checking | available | up_to_date | downloading | downloaded | error
     var updateInfo by remember { mutableStateOf<com.example.billtracker.data.UpdateInfo?>(null) }
@@ -96,11 +99,15 @@ fun ProfileScreen(
         } else null
     }
 
-    LazyColumn(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
-    ) {
+    val isDark = isSystemInDarkTheme()
+    val frostedCardColor = if (isDark) Color(0xFF2A2A2A).copy(alpha = 0.88f) else Color.White.copy(alpha = 0.88f)
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.background)
+        ) {
         // ── 头部：头像 + 昵称 ──
         item {
             Column(
@@ -148,7 +155,7 @@ fun ProfileScreen(
                     Icon(
                         Icons.Default.Edit,
                         contentDescription = "编辑昵称",
-                        tint = Color(0xFF9AA0A6),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
                         modifier = Modifier.size(16.dp)
                     )
                 }
@@ -161,11 +168,13 @@ fun ProfileScreen(
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
                 shape = RoundedCornerShape(16.dp),
                 elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+                colors = CardDefaults.cardColors(containerColor = frostedCardColor)
             ) {
                 ProfileMenuItem(Icons.Default.Analytics, "账单分析", { onNavigateToAnalysis() })
-                Divider(modifier = Modifier.padding(horizontal = 16.dp), color = Color(0xFFF1F3F4))
+                Divider(modifier = Modifier.padding(horizontal = 16.dp), color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
                 ProfileMenuItem(Icons.Default.Share, "导出账单", { showExportDialog = true })
+                Divider(modifier = Modifier.padding(horizontal = 16.dp), color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
+                ProfileMenuItem(Icons.Default.FileUpload, "导入账单", { onNavigateToImport() })
             }
         }
 
@@ -177,17 +186,17 @@ fun ProfileScreen(
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
                 shape = RoundedCornerShape(16.dp),
                 elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+                colors = CardDefaults.cardColors(containerColor = frostedCardColor)
             ) {
                 Text(
                     text = "设置",
                     fontSize = 13.sp,
                     fontWeight = FontWeight.SemiBold,
-                    color = Color(0xFF9AA0A6),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
                     modifier = Modifier.padding(start = 16.dp, top = 14.dp, bottom = 6.dp)
                 )
                 ProfileMenuItem(Icons.Default.Palette, "更换主题", { showThemeDialog = true })
-                Divider(modifier = Modifier.padding(horizontal = 16.dp), color = Color(0xFFF1F3F4))
+                Divider(modifier = Modifier.padding(horizontal = 16.dp), color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
                 ProfileMenuItem(Icons.Default.Science, "AI 助手", { onAiChatToggle(!aiChatEnabled) },
                     trailing = {
                         if (aiChatEnabled) {
@@ -202,13 +211,11 @@ fun ProfileScreen(
                             }
                         }
                     })
-                Divider(modifier = Modifier.padding(horizontal = 16.dp), color = Color(0xFFF1F3F4))
+                Divider(modifier = Modifier.padding(horizontal = 16.dp), color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
                 ProfileMenuItem(Icons.Default.SystemUpdate, "检查更新", { showUpdateDialog = true })
-                Divider(modifier = Modifier.padding(horizontal = 16.dp), color = Color(0xFFF1F3F4))
-                ProfileMenuItem(Icons.Default.Favorite, "赞赏作者", { showDonateDialog = true }, tint = Color(0xFFE91E63))
-                Divider(modifier = Modifier.padding(horizontal = 16.dp), color = Color(0xFFF1F3F4))
-                ProfileMenuItem(Icons.Default.Info, "关于", { showAboutDialog = true })
-                Divider(modifier = Modifier.padding(horizontal = 16.dp), color = Color(0xFFF1F3F4))
+                Divider(modifier = Modifier.padding(horizontal = 16.dp), color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
+                ProfileMenuItem(Icons.Default.Info, "关于", { showAboutScreen = true })
+                Divider(modifier = Modifier.padding(horizontal = 16.dp), color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
                 ProfileMenuItem(Icons.Default.DeleteForever, "清空全部记录", { showClearConfirm = true },
                     tint = Color(0xFFEA6B5C))
             }
@@ -217,7 +224,13 @@ fun ProfileScreen(
         item { Spacer(Modifier.height(32.dp)) }
     }
 
-    // ── 编辑昵称弹窗 ──
+    // ── 关于全屏页面 ──
+    if (showAboutScreen) {
+        AboutScreen(onBack = { showAboutScreen = false })
+    }
+}
+
+// ── 编辑昵称弹窗 ──
     if (showNicknameDialog) {
         var input by remember { mutableStateOf(nickname) }
         AlertDialog(
@@ -241,7 +254,7 @@ fun ProfileScreen(
                 ) { Text("保存") }
             },
             dismissButton = {
-                TextButton(onClick = { showNicknameDialog = false }) { Text("取消", color = Color(0xFF5F6368)) }
+                TextButton(onClick = { showNicknameDialog = false }) { Text("取消", color = MaterialTheme.colorScheme.onSurfaceVariant) }
             }
         )
     }
@@ -255,7 +268,7 @@ fun ProfileScreen(
             Card(
                 modifier = Modifier.fillMaxWidth(0.85f),
                 shape = RoundedCornerShape(24.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+                colors = CardDefaults.cardColors(containerColor = frostedCardColor)
             ) {
                 Column(modifier = Modifier.padding(20.dp)) {
                     Text("选择头像", fontWeight = FontWeight.Bold, fontSize = 18.sp)
@@ -284,12 +297,12 @@ fun ProfileScreen(
                     }
 
                     Spacer(Modifier.height(12.dp))
-                    Text("选择表情", fontSize = 13.sp, color = Color(0xFF9AA0A6))
+                    Text("选择表情", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f))
                     Spacer(Modifier.height(8.dp))
 
                     LazyVerticalGrid(
                         columns = GridCells.Fixed(5),
-                        modifier = Modifier.fillMaxWidth().height(200.dp),
+                        modifier = Modifier.fillMaxWidth().height(320.dp),
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
@@ -298,7 +311,7 @@ fun ProfileScreen(
                                 onClick = { onAvatarChange(i); showAvatarDialog = false },
                                 shape = CircleShape,
                                 color = if (i == avatarEmoji) MaterialTheme.colorScheme.primaryContainer
-                                       else Color(0xFFF1F3F4),
+                                       else MaterialTheme.colorScheme.surfaceVariant,
                                 modifier = Modifier.size(52.dp)
                             ) {
                                 Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
@@ -322,7 +335,7 @@ fun ProfileScreen(
                     Spacer(Modifier.height(4.dp))
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                         TextButton(onClick = { showAvatarDialog = false }) {
-                            Text("取消", color = Color(0xFF5F6368))
+                            Text("取消", color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
                 }
@@ -348,7 +361,7 @@ fun ProfileScreen(
                     ) {
                         Surface(
                             shape = CircleShape,
-                            color = Color(0xFF9AA0A6),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
                             modifier = Modifier.size(28.dp)
                         ) {
                             Box(contentAlignment = Alignment.Center) {
@@ -357,7 +370,7 @@ fun ProfileScreen(
                         }
                         Spacer(Modifier.width(14.dp))
                         Text("跟随系统", fontSize = 16.sp,
-                            color = if (followSystemTheme) MaterialTheme.colorScheme.primary else Color(0xFF2C241A),
+                            color = if (followSystemTheme) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
                             fontWeight = if (followSystemTheme) FontWeight.Bold else FontWeight.Normal)
                         if (followSystemTheme) {
                             Spacer(Modifier.weight(1f))
@@ -365,7 +378,7 @@ fun ProfileScreen(
                         }
                     }
                     Spacer(Modifier.height(4.dp))
-                    HorizontalDivider(modifier = Modifier.padding(horizontal = 4.dp), color = Color(0xFFF1F3F4))
+                    HorizontalDivider(modifier = Modifier.padding(horizontal = 4.dp), color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
                     Spacer(Modifier.height(4.dp))
 
                     // ── 各主题 ──
@@ -384,7 +397,7 @@ fun ProfileScreen(
                             ) {}
                             Spacer(Modifier.width(14.dp))
                             Text(theme.name, fontSize = 16.sp,
-                                color = if (!followSystemTheme && i == themeIndex) theme.primary else Color(0xFF2C241A),
+                                color = if (!followSystemTheme && i == themeIndex) theme.primary else MaterialTheme.colorScheme.onSurface,
                                 fontWeight = if (!followSystemTheme && i == themeIndex) FontWeight.Bold else FontWeight.Normal)
                             if (!followSystemTheme && i == themeIndex) {
                                 Spacer(Modifier.weight(1f))
@@ -395,7 +408,7 @@ fun ProfileScreen(
                 }
             },
             confirmButton = {
-                TextButton(onClick = { showThemeDialog = false }) { Text("关闭", color = Color(0xFF5F6368)) }
+                TextButton(onClick = { showThemeDialog = false }) { Text("关闭", color = MaterialTheme.colorScheme.onSurfaceVariant) }
             }
         )
     }
@@ -415,7 +428,7 @@ fun ProfileScreen(
                 ) { Text("确定清空", color = Color.White) }
             },
             dismissButton = {
-                TextButton(onClick = { showClearConfirm = false }) { Text("取消", color = Color(0xFF5F6368)) }
+                TextButton(onClick = { showClearConfirm = false }) { Text("取消", color = MaterialTheme.colorScheme.onSurfaceVariant) }
             }
         )
     }
@@ -429,7 +442,7 @@ fun ProfileScreen(
             text = {
                 Column(modifier = Modifier.fillMaxWidth()) {
                     // 时间范围选择
-                    Text("时间范围", fontSize = 13.sp, color = Color(0xFF9AA0A6))
+                    Text("时间范围", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f))
                     Spacer(Modifier.height(8.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         listOf("全部时间", "最近30天", "自定义").forEachIndexed { i, label ->
@@ -455,7 +468,7 @@ fun ProfileScreen(
                     // 自定义日期选择
                     if (exportTimeRange == 2) {
                         Spacer(Modifier.height(10.dp))
-                        Text("开始日期", fontSize = 13.sp, color = Color(0xFF5F6368))
+                        Text("开始日期", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         Spacer(Modifier.height(4.dp))
                         Surface(
                             onClick = {
@@ -473,7 +486,7 @@ fun ProfileScreen(
                                 ).show()
                             },
                             shape = RoundedCornerShape(10.dp),
-                            color = Color(0xFFF1F3F4),
+                            color = MaterialTheme.colorScheme.surfaceVariant,
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             val fmt = java.text.SimpleDateFormat("yyyy/MM/dd", java.util.Locale.getDefault())
@@ -481,11 +494,11 @@ fun ProfileScreen(
                                 text = if (exportStartDate > 0) fmt.format(java.util.Date(exportStartDate)) else "点击选择",
                                 modifier = Modifier.padding(12.dp),
                                 fontSize = 14.sp,
-                                color = if (exportStartDate > 0) Color(0xFF1F1F1F) else Color(0xFF9AA0A6)
+                                color = if (exportStartDate > 0) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
                             )
                         }
                         Spacer(Modifier.height(8.dp))
-                        Text("结束日期", fontSize = 13.sp, color = Color(0xFF5F6368))
+                        Text("结束日期", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         Spacer(Modifier.height(4.dp))
                         Surface(
                             onClick = {
@@ -503,7 +516,7 @@ fun ProfileScreen(
                                 ).show()
                             },
                             shape = RoundedCornerShape(10.dp),
-                            color = Color(0xFFF1F3F4),
+                            color = MaterialTheme.colorScheme.surfaceVariant,
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             val fmt = java.text.SimpleDateFormat("yyyy/MM/dd", java.util.Locale.getDefault())
@@ -511,7 +524,7 @@ fun ProfileScreen(
                                 text = if (exportEndDate > 0) fmt.format(java.util.Date(exportEndDate)) else "点击选择",
                                 modifier = Modifier.padding(12.dp),
                                 fontSize = 14.sp,
-                                color = if (exportEndDate > 0) Color(0xFF1F1F1F) else Color(0xFF9AA0A6)
+                                color = if (exportEndDate > 0) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
                             )
                         }
                     }
@@ -538,7 +551,7 @@ fun ProfileScreen(
                             Column {
                                 Text("导出表格 (CSV)", fontSize = 15.sp, fontWeight = FontWeight.Medium,
                                     color = MaterialTheme.colorScheme.onSurface)
-                                Text("以表格形式导出账单数据", fontSize = 12.sp, color = Color(0xFF9AA0A6))
+                                Text("以表格形式导出账单数据", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f))
                             }
                         }
                     }
@@ -564,123 +577,18 @@ fun ProfileScreen(
                             Column {
                                 Text("导出图片", fontSize = 15.sp, fontWeight = FontWeight.Medium,
                                     color = MaterialTheme.colorScheme.onSurface)
-                                Text("以图片形式导出账单概览", fontSize = 12.sp, color = Color(0xFF9AA0A6))
+                                Text("以图片形式导出账单概览", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f))
                             }
                         }
                     }
                 }
             },
             confirmButton = {
-                TextButton(onClick = { showExportDialog = false }) { Text("取消", color = Color(0xFF5F6368)) }
+                TextButton(onClick = { showExportDialog = false }) { Text("取消", color = MaterialTheme.colorScheme.onSurfaceVariant) }
             }
         )
     }
 
-    // ── 关于弹窗 ──
-    if (showAboutDialog) {
-        Dialog(
-            onDismissRequest = { showAboutDialog = false },
-            properties = DialogProperties(usePlatformDefaultWidth = false)
-        ) {
-            Card(
-                modifier = Modifier.fillMaxWidth(0.88f),
-                shape = RoundedCornerShape(24.dp),
-                elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(24.dp)
-                ) {
-                    Text(
-                        text = "关于记账助手",
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onBackground
-                    )
-                    Spacer(Modifier.height(16.dp))
-                    Text(
-                        text = buildString {
-                            appendLine("记账助手是一款轻量级的个人记账应用，帮你轻松管理日常收支。")
-                            appendLine("")
-                            appendLine("版本：${com.example.billtracker.data.AppUpdater.getCurrentVersionName(context)}")
-                            appendLine("")
-                            appendLine("▎主要功能")
-                            appendLine("• 手动/自动记账：支持手动输入和自动读取通知栏账单")
-                            appendLine("• AI 聊天记账：自然语言描述即可记账")
-                            appendLine("• 智能分类：自动识别交易类别（餐饮、交通、购物等）")
-                            appendLine("• 账单分析：收支对比柱状图、支出分类饼图")
-                            appendLine("• 计划管理：设定预算目标，跟踪消费进度")
-                            appendLine("• 多主题：支持多种温馨配色主题")
-                            appendLine("• 数据导出：支持 CSV 表格和图片导出，可选择时间范围")
-                            appendLine("")
-                            appendLine("▎数据安全")
-                            appendLine("所有账单数据仅保存在您的设备本地，不会上传到任何服务器。")
-                        },
-                        fontSize = 14.sp,
-                        color = Color(0xFF5F6368),
-                        lineHeight = 22.sp
-                    )
-                    Spacer(Modifier.height(20.dp))
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.End
-                    ) {
-                        Button(
-                            onClick = { showAboutDialog = false },
-                            shape = RoundedCornerShape(10.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
-                        ) {
-                            Text("关闭", color = Color.White)
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    // ── 赞赏作者弹窗 ──
-    if (showDonateDialog) {
-        AlertDialog(
-            onDismissRequest = { showDonateDialog = false },
-            shape = RoundedCornerShape(20.dp),
-            title = {
-                Text("赞赏作者", fontWeight = FontWeight.Bold, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
-            },
-            text = {
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Spacer(Modifier.height(8.dp))
-                    Text(
-                        "如果这个应用对你有帮助，欢迎赞赏支持！",
-                        fontSize = 14.sp, color = Color(0xFF5F6368),
-                        textAlign = TextAlign.Center
-                    )
-                    Spacer(Modifier.height(16.dp))
-                    Image(
-                        painter = painterResource(id = R.drawable.zsm),
-                        contentDescription = "赞赏码",
-                        modifier = Modifier.size(240.dp),
-                        contentScale = ContentScale.Fit
-                    )
-                    Spacer(Modifier.height(12.dp))
-                    Text(
-                        "微信 / 支付宝 扫码赞赏",
-                        fontSize = 12.sp, color = Color(0xFF9AA0A6),
-                        textAlign = TextAlign.Center
-                    )
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = { showDonateDialog = false }) {
-                    Text("关闭", color = Color(0xFF5F6368))
-                }
-            }
-        )
-    }
 
     // ── 检查更新弹窗 ──
     if (showUpdateDialog) {
@@ -700,7 +608,7 @@ fun ProfileScreen(
                             Spacer(Modifier.height(8.dp))
                             Text(
                                 "当前版本：v${com.example.billtracker.data.AppUpdater.getCurrentVersionName(context)}",
-                                fontSize = 14.sp, color = Color(0xFF5F6368)
+                                fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                             Spacer(Modifier.height(16.dp))
                             Button(
@@ -730,7 +638,7 @@ fun ProfileScreen(
                             Spacer(Modifier.height(12.dp))
                             CircularProgressIndicator(modifier = Modifier.size(36.dp), strokeWidth = 3.dp)
                             Spacer(Modifier.height(12.dp))
-                            Text("正在检查...", fontSize = 14.sp, color = Color(0xFF5F6368))
+                            Text("正在检查...", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                         "up_to_date" -> {
                             Spacer(Modifier.height(12.dp))
@@ -746,12 +654,12 @@ fun ProfileScreen(
                                 Spacer(Modifier.height(8.dp))
                                 Surface(
                                     shape = RoundedCornerShape(10.dp),
-                                    color = Color(0xFFF1F3F4),
+                                    color = MaterialTheme.colorScheme.surfaceVariant,
                                     modifier = Modifier.fillMaxWidth()
                                 ) {
                                     Text(
                                         text = info.releaseNotes,
-                                        fontSize = 13.sp, color = Color(0xFF5F6368), lineHeight = 18.sp,
+                                        fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, lineHeight = 18.sp,
                                         modifier = Modifier.padding(12.dp)
                                     )
                                 }
@@ -784,10 +692,10 @@ fun ProfileScreen(
                             LinearProgressIndicator(
                                 progress = { downloadProgress / 100f },
                                 modifier = Modifier.fillMaxWidth().height(6.dp),
-                                trackColor = Color(0xFFF1F3F4)
+                                trackColor = MaterialTheme.colorScheme.surfaceVariant
                             )
                             Spacer(Modifier.height(8.dp))
-                            Text("下载中 $downloadProgress%", fontSize = 13.sp, color = Color(0xFF5F6368))
+                            Text("下载中 $downloadProgress%", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                         "downloaded" -> {
                             Spacer(Modifier.height(12.dp))
@@ -810,7 +718,7 @@ fun ProfileScreen(
                             Spacer(Modifier.height(8.dp))
                             Text("检查失败", fontSize = 16.sp, fontWeight = FontWeight.Medium)
                             Spacer(Modifier.height(4.dp))
-                            Text(updateError, fontSize = 13.sp, color = Color(0xFF5F6368))
+                            Text(updateError, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             Spacer(Modifier.height(16.dp))
                             Button(
                                 onClick = { updateState = "" },
@@ -830,7 +738,7 @@ fun ProfileScreen(
                         downloadedFile = null
                     }
                 }) {
-                    Text(if (updateState == "downloading") "下载中..." else "关闭", color = Color(0xFF5F6368))
+                    Text(if (updateState == "downloading") "下载中..." else "关闭", color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
         )
@@ -852,14 +760,314 @@ private fun ProfileMenuItem(
             .padding(horizontal = 16.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Icon(icon, contentDescription = null, tint = if (tint != Color.Unspecified) tint else Color(0xFF5F6368), modifier = Modifier.size(22.dp))
+        Icon(icon, contentDescription = null, tint = if (tint != Color.Unspecified) tint else MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(22.dp))
         Spacer(Modifier.width(14.dp))
         Text(label, fontSize = 15.sp, color = if (tint != Color.Unspecified) tint else MaterialTheme.colorScheme.onSurface)
         Spacer(Modifier.weight(1f))
         if (trailing != null) {
             trailing()
         } else {
-            Icon(Icons.Default.ChevronRight, contentDescription = null, tint = Color(0xFFDADCE0), modifier = Modifier.size(20.dp))
+            Icon(Icons.Default.ChevronRight, contentDescription = null, tint = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f), modifier = Modifier.size(20.dp))
         }
+    }
+}
+
+// ── 关于页面 ──
+@Composable
+private fun AboutScreen(onBack: () -> Unit) {
+    val context = LocalContext.current
+    val isDark = isSystemInDarkTheme()
+    val bgColor = if (isDark) Color(0xFF1A1A1A) else Color(0xFFF8F9FA)
+    var showIntroDialog by remember { mutableStateOf(false) }
+    var showDonateDialog by remember { mutableStateOf(false) }
+
+    Box(modifier = Modifier.fillMaxSize().background(bgColor)) {
+        Column(modifier = Modifier.fillMaxSize()) {
+            // 顶部栏
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                color = Color.Transparent,
+                shadowElevation = 2.dp
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .statusBarsPadding()
+                        .padding(horizontal = 8.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    IconButton(onClick = onBack) {
+                        Icon(
+                            Icons.Default.ArrowBack,
+                            contentDescription = "返回",
+                            tint = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                    Spacer(Modifier.width(4.dp))
+                    Text(
+                        text = "关于",
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                }
+            }
+
+            // 内容区
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 20.dp)
+            ) {
+                Spacer(Modifier.height(16.dp))
+
+                // ── 1. 作者邮箱（直接显示） ──
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = if (isDark) Color(0xFF2A2A2A).copy(alpha = 0.88f) else Color.White.copy(alpha = 0.88f)
+                    ),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+                ) {
+                    Column(modifier = Modifier.padding(20.dp)) {
+                        Text(
+                            text = "▎作者邮箱",
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Spacer(Modifier.height(10.dp))
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                Icons.Default.Email,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            Text(
+                                text = "3175878672@qq.com",
+                                fontSize = 14.sp,
+                                color = MaterialTheme.colorScheme.primary,
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+                    }
+                }
+
+                Spacer(Modifier.height(16.dp))
+
+                // ── 2. 应用介绍（点击弹窗） ──
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { showIntroDialog = true },
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = if (isDark) Color(0xFF2A2A2A).copy(alpha = 0.88f) else Color.White.copy(alpha = 0.88f)
+                    ),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(20.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(Modifier.weight(1f)) {
+                            Text(
+                                text = "▎应用介绍",
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Spacer(Modifier.height(4.dp))
+                            Text(
+                                text = "记账助手 v${com.example.billtracker.data.AppUpdater.getCurrentVersionName(context)}",
+                                fontSize = 13.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                            )
+                        }
+                        Icon(
+                            Icons.Default.ChevronRight,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f),
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                }
+
+                Spacer(Modifier.height(16.dp))
+
+                // ── 3. 赞赏作者（点击弹窗） ──
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { showDonateDialog = true },
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = if (isDark) Color(0xFF2A2A2A).copy(alpha = 0.88f) else Color.White.copy(alpha = 0.88f)
+                    ),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(20.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(Modifier.weight(1f)) {
+                            Text(
+                                text = "▎赞赏作者",
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Spacer(Modifier.height(4.dp))
+                            Text(
+                                text = "如果这个应用对你有帮助，欢迎赞赏支持！",
+                                fontSize = 13.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                            )
+                        }
+                        Icon(
+                            Icons.Default.ChevronRight,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f),
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                }
+
+                Spacer(Modifier.height(32.dp))
+            }
+        }
+    }
+
+    // ── 介绍弹窗 ──
+    if (showIntroDialog) {
+        AlertDialog(
+            onDismissRequest = { showIntroDialog = false },
+            shape = RoundedCornerShape(20.dp),
+            title = {
+                Text("应用介绍", fontWeight = FontWeight.Bold, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
+            },
+            text = {
+                Column(Modifier.verticalScroll(rememberScrollState())) {
+                    Text(
+                        text = "记账助手",
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        text = "v${com.example.billtracker.data.AppUpdater.getCurrentVersionName(context)}",
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                    )
+                    Spacer(Modifier.height(16.dp))
+                    Text(
+                        text = "记账助手是一款轻量级的个人记账应用，帮你轻松管理日常收支。",
+                        fontSize = 14.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        lineHeight = 22.sp
+                    )
+                    Spacer(Modifier.height(16.dp))
+                    Text(
+                        text = "▎主要功能",
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    val features = listOf(
+                        "手动/自动记账：支持手动输入和自动读取通知栏账单",
+                        "AI 聊天记账：自然语言描述即可记账",
+                        "智能分类：自动识别交易类别（餐饮、交通、购物等）",
+                        "账单分析：收支对比柱状图、支出分类饼图",
+                        "计划管理：设定预算目标，跟踪消费进度",
+                        "多主题：支持多种温馨配色主题",
+                        "数据导出：支持 CSV 表格和图片导出，可选择时间范围"
+                    )
+                    features.forEach { f ->
+                        Row(modifier = Modifier.padding(vertical = 3.dp)) {
+                            Text("•  ", fontSize = 14.sp, color = MaterialTheme.colorScheme.primary)
+                            Text(
+                                text = f,
+                                fontSize = 14.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                lineHeight = 20.sp
+                            )
+                        }
+                    }
+                    Spacer(Modifier.height(16.dp))
+                    Text(
+                        text = "▎数据安全",
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        text = "所有账单数据仅保存在您的设备本地，不会上传到任何服务器。",
+                        fontSize = 14.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        lineHeight = 20.sp
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showIntroDialog = false }) {
+                    Text("关闭", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+        )
+    }
+
+    // ── 赞赏弹窗 ──
+    if (showDonateDialog) {
+        AlertDialog(
+            onDismissRequest = { showDonateDialog = false },
+            shape = RoundedCornerShape(20.dp),
+            title = {
+                Text("赞赏作者", fontWeight = FontWeight.Bold, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
+            },
+            text = {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        text = "如果这个应用对你有帮助，欢迎赞赏支持！",
+                        fontSize = 14.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Spacer(Modifier.height(16.dp))
+                    Image(
+                        painter = painterResource(id = R.drawable.zsm),
+                        contentDescription = "赞赏码",
+                        modifier = Modifier.size(240.dp),
+                        contentScale = ContentScale.Fit
+                    )
+                    Spacer(Modifier.height(12.dp))
+                    Text(
+                        text = "微信 / 支付宝 扫码赞赏",
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showDonateDialog = false }) {
+                    Text("关闭", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+        )
     }
 }

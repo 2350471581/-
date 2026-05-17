@@ -12,6 +12,7 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.*
@@ -30,14 +31,9 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Message
-import androidx.compose.material.icons.filled.Science
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Receipt
-import androidx.compose.material.icons.filled.TrendingUp
-import androidx.compose.material.icons.filled.TrendingDown
-import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -64,6 +60,9 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.billtracker.data.TransactionEntity
 import com.example.billtracker.data.TransactionSource
 import com.example.billtracker.data.TransactionType
+import com.example.billtracker.ui.components.BackgroundGradient
+import com.example.billtracker.ui.ImportScreen
+import com.example.billtracker.ui.components.BillTrackerBottomBar
 import com.example.billtracker.viewmodel.MainViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -92,6 +91,7 @@ fun MainScreen(viewModel: MainViewModel = viewModel()) {
     var selectedBottomTab by remember { mutableIntStateOf(0) }
     var showAnalysis by remember { mutableStateOf(false) }
     var showAIChat by remember { mutableStateOf(false) }
+    var showImport by remember { mutableStateOf(false) }
     var showAIChatTutorial by remember { mutableStateOf(false) }
     var showAiChatProfileTutorial by remember { mutableStateOf(false) }
 
@@ -102,6 +102,14 @@ fun MainScreen(viewModel: MainViewModel = viewModel()) {
     val aiChatTutorialDone by viewModel.aiChatTutorialDone.collectAsStateWithLifecycle()
     val hasNotificationPermission by viewModel.hasNotificationPermission.collectAsStateWithLifecycle()
     var showManualPlanAlert by remember { mutableStateOf(false) }
+
+    val themeIdx by viewModel.themeIndex.collectAsStateWithLifecycle()
+    val isDark = isSystemInDarkTheme()
+    val gradientPair = remember(themeIdx, isDark) {
+        val palette = if (isDark) DarkThemes.getOrElse(themeIdx) { DarkThemes[0] }
+        else Themes.getOrElse(themeIdx) { Themes[0] }
+        palette.gradientStart to palette.gradientEnd
+    }
 
     // 从通知设置返回时重新检查权限
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -204,46 +212,23 @@ fun MainScreen(viewModel: MainViewModel = viewModel()) {
             }
         },
         bottomBar = {
-            Surface(
-                shadowElevation = 8.dp,
-                color = Color.White
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth().height(56.dp),
-                    horizontalArrangement = Arrangement.SpaceEvenly,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    BottomNavItem(
-                        selected = selectedBottomTab == 0,
-                        icon = Icons.Default.Receipt,
-                        label = "记账助手",
-                        modifier = Modifier.weight(1f),
-                        onClick = { selectedBottomTab = 0 }
-                    )
-                    BottomNavItem(
-                        selected = selectedBottomTab == 1,
-                        icon = Icons.Default.Star,
-                        label = "计划",
-                        modifier = Modifier.weight(1f),
-                        onClick = { selectedBottomTab = 1 }
-                    )
-                    BottomNavItem(
-                        selected = selectedBottomTab == 2,
-                        icon = Icons.Default.Person,
-                        label = "我的",
-                        modifier = Modifier.weight(1f),
-                        onClick = { selectedBottomTab = 2 }
-                    )
-                }
+            if (!showAIChat && !showImport) {
+                BillTrackerBottomBar(
+                    selectedTab = selectedBottomTab,
+                    onTabSelected = { selectedBottomTab = it }
+                )
             }
         }
     ) { padding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .background(Color(0xFFF8F9FA))
+        BackgroundGradient(
+            gradientStart = gradientPair.first,
+            gradientEnd = gradientPair.second
         ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding)
+            ) {
             if (showAnalysis) {
                 AnalysisScreen(viewModel = viewModel, onBack = { showAnalysis = false })
             } else if (showAIChat) {
@@ -253,6 +238,11 @@ fun MainScreen(viewModel: MainViewModel = viewModel()) {
                         viewModel.addTransaction(amount, type, desc)
                     },
                     viewModel = viewModel
+                )
+            } else if (showImport) {
+                ImportScreen(
+                    onBack = { showImport = false },
+                    onImport = { bills -> viewModel.importBills(bills); scope.launch { snackbarHostState.showSnackbar("已导入 ${bills.size} 条账单") } }
                 )
             } else if (selectedBottomTab == 0) {
                 // ── 权限提示条（仅在自动模式下显示） ──
@@ -332,7 +322,7 @@ fun MainScreen(viewModel: MainViewModel = viewModel()) {
                 // ── TabRow ──
                 TabRow(
                     selectedTabIndex = pagerState.currentPage,
-                    containerColor = Color.White,
+                    containerColor = CardBg(),
                     contentColor = MaterialTheme.colorScheme.primary
                 ) {
                     Tab(
@@ -421,7 +411,6 @@ fun MainScreen(viewModel: MainViewModel = viewModel()) {
                 // ── 我的页面 ──
                 val nick by viewModel.nickname.collectAsStateWithLifecycle()
                 val avatar by viewModel.avatarEmoji.collectAsStateWithLifecycle()
-                val themeIdx by viewModel.themeIndex.collectAsStateWithLifecycle()
                 val customUri by viewModel.customAvatarUri.collectAsStateWithLifecycle()
                 ProfileScreen(
                     nickname = nick,
@@ -440,6 +429,7 @@ fun MainScreen(viewModel: MainViewModel = viewModel()) {
                         scope.launch { snackbarHostState.showSnackbar("已清空全部记录") }
                     },
                     onNavigateToAnalysis = { showAnalysis = true },
+                    onNavigateToImport = { showImport = true },
                     aiChatEnabled = aiChatEnabled,
                     onAiChatToggle = { enabled ->
                         viewModel.setAiChatEnabled(enabled)
@@ -485,6 +475,7 @@ fun MainScreen(viewModel: MainViewModel = viewModel()) {
                     }
                 )
             }
+        }
         }
     }
 
@@ -657,6 +648,10 @@ fun MainScreen(viewModel: MainViewModel = viewModel()) {
 
 // ── 微信风格余额卡片 ──
 @Composable
+fun CardBg() = if (isSystemInDarkTheme()) Color(0xFF2A2A2A).copy(alpha = 0.88f)
+    else Color.White.copy(alpha = 0.88f)
+
+@Composable
 fun WeChatStyleBalanceCard(
     income: Double,
     expense: Double,
@@ -673,7 +668,7 @@ fun WeChatStyleBalanceCard(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(20.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 3.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+        colors = CardDefaults.cardColors(containerColor = CardBg())
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             // 小标题 + 日期筛选 + 手动/自动切换
@@ -714,41 +709,44 @@ fun WeChatStyleBalanceCard(
                     }
                 }
                 if (onToggleMode != null) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.height(32.dp)
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = Color(0xFFF1F3F4)
                     ) {
-                        // 手动
-                        Surface(
-                            onClick = {
-                                if (!isManualMode) onToggleMode()
-                            },
-                            shape = RoundedCornerShape(topStart = 8.dp, bottomStart = 8.dp, topEnd = 0.dp, bottomEnd = 0.dp),
-                            color = if (isManualMode) MaterialTheme.colorScheme.primary else Color(0xFFF1F3F4)
+                        Row(
+                            modifier = Modifier.height(32.dp),
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text(
-                                text = "手动",
-                                fontSize = 13.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = if (isManualMode) Color.White else Color(0xFF9AA0A6),
-                                modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp)
-                            )
-                        }
-                        // 自动
-                        Surface(
-                            onClick = {
-                                if (isManualMode) onToggleMode()
-                            },
-                            shape = RoundedCornerShape(topStart = 0.dp, bottomStart = 0.dp, topEnd = 8.dp, bottomEnd = 8.dp),
-                            color = if (!isManualMode) MaterialTheme.colorScheme.primary else Color(0xFFF1F3F4)
-                        ) {
-                            Text(
-                                text = "自动",
-                                fontSize = 13.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = if (!isManualMode) Color.White else Color(0xFF9AA0A6),
-                                modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp)
-                            )
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .fillMaxHeight()
+                                    .background(if (isManualMode) MaterialTheme.colorScheme.primary else Color.Transparent)
+                                    .clickable(enabled = !isManualMode) { onToggleMode() },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = "手动",
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = if (isManualMode) Color.White else Color(0xFF9AA0A6)
+                                )
+                            }
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .fillMaxHeight()
+                                    .background(if (!isManualMode) MaterialTheme.colorScheme.primary else Color.Transparent)
+                                    .clickable(enabled = isManualMode) { onToggleMode() },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = "自动",
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = if (!isManualMode) Color.White else Color(0xFF9AA0A6)
+                                )
+                            }
                         }
                     }
                 }
@@ -771,7 +769,7 @@ fun WeChatStyleBalanceCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(1.dp)
-                    .background(Color(0xFFF1F3F4))
+                    .background(MaterialTheme.colorScheme.outline.copy(alpha = 0.5f))
             )
 
             Spacer(modifier = Modifier.height(14.dp))
@@ -786,11 +784,11 @@ fun WeChatStyleBalanceCard(
                     modifier = Modifier.weight(1f),
                     horizontalArrangement = Arrangement.Center
                 ) {
-                    Icon(
-                        Icons.Default.TrendingUp,
-                        contentDescription = null,
-                        tint = IncomeGreen,
-                        modifier = Modifier.size(22.dp)
+                    Text(
+                        text = "↑",
+                        fontSize = 22.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = IncomeGreen
                     )
                     Spacer(modifier = Modifier.width(6.dp))
                     Column {
@@ -814,11 +812,11 @@ fun WeChatStyleBalanceCard(
                     modifier = Modifier.weight(1f),
                     horizontalArrangement = Arrangement.Center
                 ) {
-                    Icon(
-                        Icons.Default.TrendingDown,
-                        contentDescription = null,
-                        tint = ExpenseRed,
-                        modifier = Modifier.size(22.dp)
+                    Text(
+                        text = "↓",
+                        fontSize = 22.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = ExpenseRed
                     )
                     Spacer(modifier = Modifier.width(6.dp))
                     Column {
@@ -839,9 +837,10 @@ fun WeChatStyleBalanceCard(
 // ── 底部隐私文字 ──
 @Composable
 fun PrivacyFooter() {
+    val subtle = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        color = Color(0xFFF8F9FA)
+        color = Color.Transparent
     ) {
         Row(
             modifier = Modifier
@@ -853,14 +852,14 @@ fun PrivacyFooter() {
             Icon(
                 Icons.Default.Lock,
                 contentDescription = null,
-                tint = Color(0xFF9AA0A6),
+                tint = subtle,
                 modifier = Modifier.size(12.dp)
             )
             Spacer(modifier = Modifier.width(4.dp))
             Text(
                 text = "你的隐私数据仅保存在本地，不会上传",
                 fontSize = 11.sp,
-                color = Color(0xFF9AA0A6)
+                color = subtle
             )
         }
     }
@@ -887,6 +886,8 @@ fun TransactionList(
     }
 
     if (transactions.isEmpty()) {
+        val muted = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
+        val hint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
         Box(
             modifier = Modifier.fillMaxSize().then(modifier),
             contentAlignment = Alignment.Center
@@ -895,21 +896,21 @@ fun TransactionList(
                 Icon(
                     Icons.Default.Receipt,
                     contentDescription = null,
-                    tint = Color(0xFFDADCE0),
+                    tint = muted,
                     modifier = Modifier.size(56.dp)
                 )
                 Spacer(modifier = Modifier.height(12.dp))
                 Text(
                     text = emptyText,
-                    color = Color(0xFF9AA0A6),
-                    fontSize = 14.sp,
+                    color = muted,
+                    fontSize = 15.sp,
                     textAlign = TextAlign.Center
                 )
-                Spacer(modifier = Modifier.height(20.dp))
+                Spacer(modifier = Modifier.height(8.dp))
                 Text(
                     text = "点击右下角 + 手动记账",
-                    color = Color(0xFFBDBDBD),
-                    fontSize = 12.sp,
+                    color = hint,
+                    fontSize = 13.sp,
                     textAlign = TextAlign.Center
                 )
             }
@@ -1031,7 +1032,7 @@ fun TransactionItem(
                 .fillMaxWidth(),
             shape = RoundedCornerShape(14.dp),
             elevation = CardDefaults.cardElevation(defaultElevation = 0.5.dp),
-            colors = CardDefaults.cardColors(containerColor = Color.White)
+            colors = CardDefaults.cardColors(containerColor = CardBg())
         ) {
             Row(
                 modifier = Modifier
@@ -1083,14 +1084,14 @@ fun TransactionItem(
                     Spacer(modifier = Modifier.width(6.dp))
                     Surface(
                         shape = RoundedCornerShape(6.dp),
-                        color = Color(0xFFF1F3F4)
+                        color = MaterialTheme.colorScheme.surfaceVariant
                     ) {
                         Text(
                             text = transaction.category,
                             modifier = Modifier.padding(horizontal = 6.dp, vertical = 4.dp),
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Normal,
-                            color = Color(0xFF5F6368)
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
@@ -1112,7 +1113,7 @@ fun TransactionItem(
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Medium,
                         maxLines = 1,
-                        color = Color(0xFF1F1F1F)
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                     Spacer(modifier = Modifier.height(3.dp))
                     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -1167,7 +1168,7 @@ fun AddTransactionDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        shape = RoundedCornerShape(20.dp),
+        shape = RoundedCornerShape(24.dp),
         title = {
             Text("添加账单", fontWeight = FontWeight.Bold, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
         },
@@ -1183,8 +1184,8 @@ fun AddTransactionDialog(
                         label = { Text("支出") },
                         modifier = Modifier.weight(1f),
                         colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = ExpenseRed.copy(alpha = 0.12f),
-                            selectedLabelColor = ExpenseRed
+                            selectedContainerColor = MaterialTheme.colorScheme.error.copy(alpha = 0.12f),
+                            selectedLabelColor = MaterialTheme.colorScheme.error
                         )
                     )
                     FilterChip(
@@ -1193,8 +1194,8 @@ fun AddTransactionDialog(
                         label = { Text("收入") },
                         modifier = Modifier.weight(1f),
                         colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = IncomeGreen.copy(alpha = 0.12f),
-                            selectedLabelColor = IncomeGreen
+                            selectedContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
+                            selectedLabelColor = MaterialTheme.colorScheme.primary
                         )
                     )
                 }
@@ -1240,7 +1241,7 @@ fun AddTransactionDialog(
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("取消", color = Color(0xFF5F6368))
+                Text("取消", color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
     )
@@ -1305,7 +1306,7 @@ fun TransactionDetailCard(
                 .fillMaxHeight(0.55f),
             shape = RoundedCornerShape(24.dp),
             elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
-            colors = CardDefaults.cardColors(containerColor = Color.White)
+            colors = CardDefaults.cardColors(containerColor = CardBg())
         ) {
             Column(
                 modifier = Modifier
@@ -1331,7 +1332,7 @@ fun TransactionDetailCard(
                         text = typeLabel,
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Medium,
-                        color = Color(0xFF5F6368)
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Spacer(modifier = Modifier.weight(1f))
                     Text(text = dateStr, fontSize = 11.sp, color = Color(0xFF9AA0A6))
@@ -1353,13 +1354,13 @@ fun TransactionDetailCard(
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(10.dp),
-                    color = Color(0xFFF1F3F4)
+                    color = MaterialTheme.colorScheme.surfaceVariant
                 ) {
                     Text(
                         text = originalSms,
                         modifier = Modifier.padding(12.dp),
                         fontSize = 12.sp,
-                        color = Color(0xFF5F6368),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         lineHeight = 18.sp
                     )
                 }
@@ -1381,7 +1382,7 @@ fun TransactionDetailCard(
                     text = "备注",
                     fontSize = 12.sp,
                     fontWeight = FontWeight.SemiBold,
-                    color = Color(0xFF5F6368)
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Spacer(modifier = Modifier.height(6.dp))
 
@@ -1408,7 +1409,7 @@ fun TransactionDetailCard(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     TextButton(onClick = onDismiss) {
-                        Text("取消", color = Color(0xFF5F6368))
+                        Text("取消", color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                     Spacer(modifier = Modifier.width(8.dp))
                     Button(
@@ -1432,32 +1433,6 @@ fun TransactionDetailCard(
     }
 }
 
-// ── 底部导航项 ──
-@Composable
-private fun BottomNavItem(
-    selected: Boolean,
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    label: String,
-    modifier: Modifier = Modifier,
-    onClick: () -> Unit
-) {
-    val color = if (selected) MaterialTheme.colorScheme.primary else Color(0xFF9AA0A6)
-    Column(
-        modifier = modifier
-            .clickable { onClick() }
-            .padding(vertical = 4.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Icon(icon, contentDescription = label, tint = color, modifier = Modifier.size(22.dp))
-        Spacer(Modifier.height(2.dp))
-        Text(
-            text = label,
-            fontSize = 10.sp,
-            fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
-            color = color
-        )
-    }
-}
 
 // ── 首次启动弹窗（简化版） ──
 @Composable

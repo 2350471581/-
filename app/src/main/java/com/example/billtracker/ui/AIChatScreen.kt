@@ -1,10 +1,6 @@
 package com.example.billtracker.ui
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -14,18 +10,15 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Send
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.billtracker.data.AIBillService
@@ -61,10 +54,10 @@ fun AIChatScreen(
     LaunchedEffect(Unit) {
         messages = listOf(
             ChatMessage(
-                text = "你好！我是AI记账助手。你可以用日常语言告诉我收支情况，比如：\n\n" +
-                        "「今天吃饭花了35块」\n" +
-                        "「工资到账8000元」\n" +
-                        "「打车花了20块」",
+                text = "嘿！我是你的记账小助手～🎉\n\n直接跟我说花了多少钱或者收了多少钱就行，像这样：\n\n" +
+                        "「中午吃饭35块」\n" +
+                        "「工资到账8000块」\n" +
+                        "「打车花了20」",
                 isUser = false
             )
         )
@@ -89,19 +82,16 @@ fun AIChatScreen(
         messages = messages + userMsg
 
         scope.launch {
-            val result = aiService.parse(text)
-            if (result != null && result.type != null) {
-                val typeStr = if (result.type == TransactionType.INCOME) "收入" else "支出"
-                val reply = "已识别：${typeStr} ${result.amount}元 - ${result.category}\n${result.description}"
-                messages = messages + ChatMessage(text = reply, isUser = false, parseResult = result)
-            } else if (result != null && result.type == null) {
-                val reply = "已识别金额 ${result.amount}元 - ${result.category}\n请选择这笔是收入还是支出？"
-                messages = messages + ChatMessage(text = reply, isUser = false, parseResult = result, pendingTypeSelection = true)
+            val summary = viewModel.getTodaySummary()
+            val result = aiService.parseChat(text, summary)
+            if (result != null && result.parseResult != null && result.parseResult.type != null) {
+                messages = messages + ChatMessage(text = result.reply, isUser = false, parseResult = result.parseResult)
+            } else if (result != null && result.parseResult != null && result.parseResult.type == null) {
+                val reply = result.reply.ifEmpty { "这笔是收入还是支出呀？" }
+                messages = messages + ChatMessage(text = reply, isUser = false, parseResult = result.parseResult, pendingTypeSelection = true)
             } else {
-                messages = messages + ChatMessage(
-                    text = "抱歉，无法从您的描述中识别出账单信息。请包含金额和用途，例如「吃饭花了35块」",
-                    isUser = false
-                )
+                val reply = result?.reply ?: "没太明白呢，跟我说花了多少钱或者收了多少钱就行～"
+                messages = messages + ChatMessage(text = reply, isUser = false)
             }
         }
     }
@@ -160,8 +150,7 @@ fun AIChatScreen(
                                     if (it == msg) it.copy(isConfirmed = true) else it
                                 }
                                 scope.launch {
-                                    snackbarHostState.showSnackbar("已添加账单")
-                                    // AI 根据账单给出上下文回复
+                                    snackbarHostState.showSnackbar("✅ 已记上啦")
                                     val summary = viewModel.getTodaySummary()
                                     val reply = aiService.chatWithContext(msg.parseResult!!, summary)
                                     if (reply != null) {
@@ -192,7 +181,7 @@ fun AIChatScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 12.dp, vertical = 8.dp)
-                        .navigationBarsPadding(),
+                        .imePadding(),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     OutlinedTextField(

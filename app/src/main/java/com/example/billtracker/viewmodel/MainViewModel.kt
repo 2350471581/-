@@ -14,6 +14,7 @@ import com.example.billtracker.data.SmsMessage
 import com.example.billtracker.data.TransactionEntity
 import com.example.billtracker.data.TransactionRepository
 import com.example.billtracker.data.TransactionType
+import com.example.billtracker.data.ParsedBill
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -147,6 +148,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun addTransaction(amount: Double, type: TransactionType, description: String) {
         viewModelScope.launch {
             repository.addManualTransaction(amount, type, description)
+        }
+    }
+
+    fun importBills(bills: List<ParsedBill>) {
+        viewModelScope.launch {
+            bills.forEach { repository.importTransaction(it) }
         }
     }
 

@@ -15,7 +15,6 @@ val IncomeGreen = Color(0xFF4CAF7A)
 val ExpenseRed = Color(0xFFEA6B5C)
 val WechatGreen = Color(0xFF07C160)
 val AlipayBlue = Color(0xFF1677FF)
-val CardWarmBg = Color(0xFFFFFBF5)
 
 private val SiYuanHeiTi = FontFamily(
     Font(R.font.siyuanheiti_regular, FontWeight.Normal),
@@ -47,7 +46,11 @@ fun BillTrackerTheme(
     isDarkTheme: Boolean = false,
     content: @Composable () -> Unit
 ) {
-    val palette = Themes.getOrElse(themeIndex) { Themes[0] }
+    val palette = if (isDarkTheme) {
+        DarkThemes.getOrElse(themeIndex) { DarkThemes[0] }
+    } else {
+        Themes.getOrElse(themeIndex) { Themes[0] }
+    }
     val colorScheme = if (isDarkTheme) darkColorSchemeFrom(palette) else colorSchemeFrom(palette)
     MaterialTheme(
         colorScheme = colorScheme,

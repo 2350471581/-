@@ -17,6 +17,11 @@ data class AIParseResult(
     val description: String
 )
 
+data class AIChatResult(
+    val parseResult: AIParseResult?,
+    val reply: String
+)
+
 class AIBillService {
 
     private val apiKey = "sk-8014a71225a649c38a2a1bf28e314b05"
@@ -103,6 +108,100 @@ class AIBillService {
         } finally {
             conn.disconnect()
         }
+    }
+
+    // 对话式记账：一次调用同时完成解析和生成自然回复
+    suspend fun parseChat(text: String, todaySummary: String = ""): AIChatResult? = withContext(Dispatchers.IO) {
+        try {
+            val systemPrompt = """
+你是一个朋友式的记账助手，语气自然亲切，像朋友聊天一样。
+
+从用户输入中提取账单信息，同时生成自然的对话式回复。
+
+以JSON格式回复，包含两个字段：
+- parse: 账单解析结果，如果完全无法识别设为 null
+- reply: 对话式回复文字
+
+parse字段：
+- amount: 金额（数字）
+- type: "INCOME" 或 "EXPENSE"，如果无法判断收支方向请设为 null
+- category: 分类（餐饮、交通、购物、生活缴费、娱乐、医疗、转账、工资、其他）
+- description: 简要描述
+
+要求：
+- reply 要像朋友聊天一样自然，可以用表情符号
+- 不要用"已识别""已记录"这类机械表述
+- 根据金额大小给出不同反应（小支出轻松带过，大支出关心一下，收入替用户高兴）
+- 简短亲切，不超过60字
+- 无法识别时 reply 要像朋友问清楚，而不是机械地报错
+
+示例：
+输入："中午吃饭花了35块"
+回复：{"parse": {"amount": 35, "type": "EXPENSE", "category": "餐饮", "description": "午餐"}, "reply": "好嘞，午饭35块记上了～今天吃的啥呀？😄"}
+
+输入："工资到账8000元"
+回复：{"parse": {"amount": 8000, "type": "INCOME", "category": "工资", "description": "工资到账"}, "reply": "哇工资到账了！8000块，这个月加油干💪🎉"}
+
+输入："今天好开心"
+回复：{"parse": null, "reply": "哈哈，有啥开心事呀？不过要是想记账的话，告诉我有多少钱干啥用了就行😄"}
+            """.trimIndent()
+
+            val userMsg = if (todaySummary.isNotBlank()) {
+                "$text\n\n今日概况供参考：$todaySummary"
+            } else text
+
+            val body = JSONObject().apply {
+                put("model", "deepseek-chat")
+                put("messages", JSONArray(listOf(
+                    JSONObject().apply { put("role", "system"); put("content", systemPrompt) },
+                    JSONObject().apply { put("role", "user"); put("content", userMsg) }
+                )))
+                put("temperature", 0.8)
+                put("max_tokens", 512)
+            }
+
+            val conn = URL(apiUrl).openConnection() as HttpURLConnection
+            conn.requestMethod = "POST"
+            conn.setRequestProperty("Content-Type", "application/json")
+            conn.setRequestProperty("Authorization", "Bearer $apiKey")
+            conn.doOutput = true
+            conn.connectTimeout = 15000
+            conn.readTimeout = 15000
+
+            try {
+                OutputStreamWriter(conn.outputStream).use { it.write(body.toString()) }
+                if (conn.responseCode != 200) return@withContext null
+
+                val json = BufferedReader(InputStreamReader(conn.inputStream)).readText()
+                val content = JSONObject(json).getJSONArray("choices")
+                    .getJSONObject(0).getJSONObject("message")
+                    .getString("content").trim()
+
+                val jsonStr = if (content.startsWith("```")) {
+                    content.trimStart('`').substringAfter("json").trim().trimStart('`').trim()
+                } else content
+
+                val result = JSONObject(jsonStr)
+                val reply = result.optString("reply", "")
+
+                if (result.isNull("parse") || !result.has("parse")) {
+                    return@withContext AIChatResult(null, reply.ifEmpty { "没太明白呢，跟我说花了多少或者收了多少钱就行～" })
+                }
+
+                val parseObj = result.getJSONObject("parse")
+                val amount = parseObj.optDouble("amount", -1.0)
+                if (amount <= 0) return@withContext AIChatResult(null, reply.ifEmpty { "金额没识别出来，再说清楚一点呗～" })
+
+                val type = if (parseObj.isNull("type")) null
+                           else if (parseObj.optString("type") == "INCOME") TransactionType.INCOME
+                           else TransactionType.EXPENSE
+                val category = parseObj.optString("category", "其他")
+                val description = parseObj.optString("description", text.take(50))
+
+                AIChatResult(AIParseResult(amount, type, category, description), reply)
+            } catch (_: Exception) { null }
+            finally { conn.disconnect() }
+        } catch (_: Exception) { null }
     }
 
     // AI 根据已添加账单生成上下文回复

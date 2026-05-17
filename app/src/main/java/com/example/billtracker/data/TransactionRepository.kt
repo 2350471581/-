@@ -57,6 +57,19 @@ class TransactionRepository(private val context: Context) {
         )
     }
 
+    suspend fun importTransaction(bill: ParsedBill) {
+        dao.insert(
+            TransactionEntity(
+                amount = bill.amount,
+                type = bill.type,
+                source = MANUAL,
+                description = if (bill.description.isNotBlank()) "${bill.category} ${bill.description}" else bill.category,
+                dateMillis = bill.dateMillis,
+                category = bill.category
+            )
+        )
+    }
+
     suspend fun deleteTransaction(id: Long) {
         dao.deleteById(id)
     }
