@@ -42,7 +42,8 @@ object AppUpdater {
     private const val CHECK_URL = "https://api.github.com/repos/2350471581/-/contents/version.json"
     private val FALLBACK_CHECK_URLS = listOf(
         "https://raw.githubusercontent.com/2350471581/-/main/version.json",
-        "https://ghproxy.com/https://raw.githubusercontent.com/2350471581/-/main/version.json"
+        "https://ghproxy.com/https://raw.githubusercontent.com/2350471581/-/main/version.json",
+        "https://gitee.com/doting-love/billing-assistant/raw/master/version.json"
     )
     private const val PREFS_NAME = "app_updater"
     private const val KEY_LAST_SOURCE = "last_source_url"
