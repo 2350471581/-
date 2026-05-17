@@ -1,12 +1,7 @@
 package com.example.billtracker.data
 
-import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
-import android.content.pm.PackageInstaller
-import android.content.pm.PackageManager
-import android.net.Uri
-import android.os.Build
 import android.widget.Toast
 import androidx.core.content.FileProvider
 import kotlinx.coroutines.Dispatchers
@@ -15,7 +10,6 @@ import java.io.File
 import java.io.FileOutputStream
 import java.net.HttpURLConnection
 import java.net.URL
-import kotlin.math.max
 
 data class UpdateInfo(
     val versionCode: Int,
@@ -37,8 +31,8 @@ sealed class DownloadResult {
 
 object AppUpdater {
 
-    // 版本检查地址（从 Gitee 仓库读取 version.json）
-    private const val CHECK_URL = "https://gitee.com/doting-love/billing-assistant/raw/master/version.json"
+    // Gitee API：读取仓库中的 version.json（需要 access_token）
+    private const val CHECK_URL = "https://gitee.com/api/v5/repos/doting-love/billing-assistant/contents/version.json?access_token=b8dda0daf2654800fd450b6fd869150e"
 
     // 获取当前版本号
     fun getCurrentVersionCode(context: Context): Int {
@@ -53,7 +47,7 @@ object AppUpdater {
         } catch (_: Exception) { "1.0" }
     }
 
-    // 检查更新
+    // 检查更新（通过 Gitee API 获取 version.json）
     suspend fun checkUpdate(context: Context): UpdateResult = withContext(Dispatchers.IO) {
         try {
             val url = URL(CHECK_URL)
@@ -67,7 +61,12 @@ object AppUpdater {
                 return@withContext UpdateResult.Error("服务器返回 $code")
             }
 
-            val jsonStr = conn.inputStream.bufferedReader().readText()
+            // Gitee API 返回 base64 编码的文件内容
+            val respStr = conn.inputStream.bufferedReader().readText()
+            val respJson = org.json.JSONObject(respStr)
+            val contentBase64 = respJson.getString("content")
+            val jsonBytes = android.util.Base64.decode(contentBase64, android.util.Base64.DEFAULT)
+            val jsonStr = String(jsonBytes, Charsets.UTF_8)
             val json = org.json.JSONObject(jsonStr)
 
             val info = UpdateInfo(
