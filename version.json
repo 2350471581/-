@@ -1,6 +1,6 @@
 {
-  "versionCode": 2,
-  "versionName": "1.1",
-  "apkUrl": "https://gitee.com/doting-love/billing-assistant/releases/download/v1.1/billtracker-v1.1.apk",
+  "versionCode": 3,
+  "versionName": "1.2",
+  "apkUrl": "https://gitee.com/doting-love/billing-assistant/releases/download/1.1/app-release.apk",
   "releaseNotes": "新增功能：\n- 暗色主题（支持跟随系统）\n- AI 聊天记账\n- 内更新机制"
 }
