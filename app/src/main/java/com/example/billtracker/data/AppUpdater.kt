@@ -31,8 +31,8 @@ sealed class DownloadResult {
 
 object AppUpdater {
 
-    // Gitee API：读取仓库中的 version.json（需要 access_token）
-    private const val CHECK_URL = "https://gitee.com/api/v5/repos/doting-love/billing-assistant/contents/version.json?access_token=b8dda0daf2654800fd450b6fd869150e"
+    // 从 GitHub API 读取 version.json（无需令牌，返回 base64）
+    private const val CHECK_URL = "https://api.github.com/repos/2350471581/-/contents/version.json"
 
     // 获取当前版本号
     fun getCurrentVersionCode(context: Context): Int {
@@ -47,13 +47,13 @@ object AppUpdater {
         } catch (_: Exception) { "1.0" }
     }
 
-    // 检查更新（通过 Gitee API 获取 version.json）
+    // 检查更新（GitHub API 返回 base64）
     suspend fun checkUpdate(context: Context): UpdateResult = withContext(Dispatchers.IO) {
         try {
             val url = URL(CHECK_URL)
             val conn = url.openConnection() as HttpURLConnection
-            conn.connectTimeout = 10000
-            conn.readTimeout = 10000
+            conn.connectTimeout = 15000
+            conn.readTimeout = 15000
             conn.requestMethod = "GET"
 
             val code = conn.responseCode
@@ -61,7 +61,6 @@ object AppUpdater {
                 return@withContext UpdateResult.Error("服务器返回 $code")
             }
 
-            // Gitee API 返回 base64 编码的文件内容
             val respStr = conn.inputStream.bufferedReader().readText()
             val respJson = org.json.JSONObject(respStr)
             val contentBase64 = respJson.getString("content")
