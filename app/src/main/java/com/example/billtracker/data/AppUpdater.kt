@@ -37,8 +37,8 @@ sealed class DownloadResult {
 
 object AppUpdater {
 
-    // 修改为你的版本检查地址
-    private const val CHECK_URL = "https://example.com/version.json"
+    // 版本检查地址（从 Gitee 仓库读取 version.json）
+    private const val CHECK_URL = "https://gitee.com/doting-love/billing-assistant/raw/master/version.json"
 
     // 获取当前版本号
     fun getCurrentVersionCode(context: Context): Int {
