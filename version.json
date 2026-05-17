@@ -1,22 +1,22 @@
 {
-  "versionCode": 2,
-  "versionName": "1.1",
-  "releaseNotes": "",
-  "apkUrl": "https://cdn.jsdelivr.net/gh/2350471581/-@v1.1/default.apk",
-  "md5": "78d8c79c4592d2515f0591dca22cf1cc",
+  "versionCode": 3,
+  "versionName": "1.2",
+  "releaseNotes": "新增功能：\n- 赞赏作者（支持微信/支付宝打赏）",
+  "apkUrl": "https://cdn.jsdelivr.net/gh/2350471581/-@v1.2/default.apk",
+  "md5": "384add8dc832960704995781b39e33c8",
   "sources": [
     {
-      "url": "https://cdn.jsdelivr.net/gh/2350471581/-@v1.1/default.apk",
+      "url": "https://cdn.jsdelivr.net/gh/2350471581/-@v1.2/default.apk",
       "priority": 0,
       "label": "jsDelivr 镜像"
     },
     {
-      "url": "https://github.com/2350471581/-/releases/download/v1.1/default.apk",
+      "url": "https://github.com/2350471581/-/releases/download/v1.2/default.apk",
       "priority": 1,
       "label": "GitHub 直连"
     },
     {
-      "url": "https://ghproxy.com/https://github.com/2350471581/-/releases/download/v1.1/default.apk",
+      "url": "https://ghproxy.com/https://github.com/2350471581/-/releases/download/v1.2/default.apk",
       "priority": 2,
       "label": "ghproxy 备用"
     }
