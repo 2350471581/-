@@ -43,7 +43,7 @@ val Themes = listOf(
     ),
     ThemePalette(
         name = "鸢尾蓝",
-        primary = Color(0xFFCDDBF7),
+        primary = Color(0xFF7B8CC4),
         background = Color(0xFFF5F3FA),
         surface = Color(0xFFFAF8FC),
         surfaceVariant = Color(0xFFD0CDEE),
@@ -134,7 +134,7 @@ val DarkThemes = listOf(
     ),
     ThemePalette(
         name = "鸢尾蓝 (深色)",
-        primary = Color(0xFFCDDBF7),
+        primary = Color(0xFFA0B0E0),
         background = Color(0xFF1A1820),
         surface = Color(0xFF221F28),
         surfaceVariant = Color(0xFF2D2A35),
@@ -241,6 +241,35 @@ fun darkColorSchemeFrom(palette: ThemePalette) = darkColorScheme(
     outline = palette.primary.copy(alpha = 0.3f),
     outlineVariant = palette.surfaceVariant.copy(alpha = 0.4f),
 )
+
+const val CUSTOM_THEME_INDEX = -1
+
+data class CustomThemeConfig(
+    val imageUri: String = "",
+    val blurRadius: Float = 15f,
+    val glassOpacity: Float = 0.4f,
+    val extractedPrimary: Long = 0xFFCDDBF7
+) {
+    fun toJson(): String {
+        return """{"imageUri":"$imageUri","blurRadius":$blurRadius,"glassOpacity":$glassOpacity,"extractedPrimary":$extractedPrimary}"""
+    }
+
+    companion object {
+        fun fromJson(json: String): CustomThemeConfig {
+            return try {
+                val obj = org.json.JSONObject(json)
+                CustomThemeConfig(
+                    imageUri = obj.optString("imageUri", ""),
+                    blurRadius = obj.optDouble("blurRadius", 15.0).toFloat(),
+                    glassOpacity = obj.optDouble("glassOpacity", 0.4).toFloat(),
+                    extractedPrimary = obj.optLong("extractedPrimary", 0xFFCDDBF7)
+                )
+            } catch (_: Exception) {
+                CustomThemeConfig()
+            }
+        }
+    }
+}
 
 val avatarEmojis = listOf(
     "😀", "😎", "🐱", "🌸", "🌟",

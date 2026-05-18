@@ -83,4 +83,7 @@ dependencies {
 
     // DeepSeek API
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
+
+    // Palette for color extraction
+    implementation("androidx.palette:palette-ktx:1.0.0")
 }
