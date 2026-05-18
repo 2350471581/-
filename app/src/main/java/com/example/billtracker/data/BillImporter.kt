@@ -145,19 +145,66 @@ object BillImporter {
         val bills = mutableListOf<ParsedBill>()
 
         // Try to extract amount - look for various Chinese payment patterns
-        val amount = extractAmount(fullText) ?: return emptyList()
+        val (amount, isIncome) = extractAmountWithType(fullText) ?: return emptyList()
 
         // Extract merchant/store name
         val merchant = extractMerchant(lines, fullText)
 
-        // Default to expense for payment screenshots
-        val type = TransactionType.EXPENSE
+        val type = if (isIncome) TransactionType.INCOME else TransactionType.EXPENSE
+        val defaultCategory = if (isIncome) "工资" else "购物"
 
         // Extract date
         val dateMillis = extractDate(fullText) ?: System.currentTimeMillis()
 
-        bills.add(ParsedBill(dateMillis, amount, type, "购物", merchant))
+        bills.add(ParsedBill(dateMillis, amount, type, defaultCategory, merchant))
         return bills
+    }
+
+    // Returns (amount, isIncome) or null
+    private fun extractAmountWithType(text: String): Pair<Double, Boolean>? {
+        // ── Alipay bill detail format ──
+        // 支出: -XX.XX or -¥XX.XX or -￥XX.XX
+        // 收入: +XX.XX or XX.XX (no sign)
+
+        // Pattern 1: Alipay expense — negative sign near amount-related keywords
+        val expenseContext = Regex("""(?:支出|付款|消费|扣款|支付).*?[-−]\s*[¥￥]?\s*(\d+\.?\d*)""")
+        val m1 = expenseContext.find(text)
+        if (m1 != null) {
+            val v = m1.groupValues[1].toDoubleOrNull()
+            if (v != null && v in 0.01..999999.0) return Pair(v, false)
+        }
+
+        // Pattern 2: Standalone negative amount at start of line or after whitespace
+        // Match "-XX.XX" but not dates like "2024-05-18" (which have year prefix)
+        val standaloneMinus = Regex("""(?:^|\s)[-−]\s*[¥￥]?\s*(\d+\.?\d{2})\s*$""", RegexOption.MULTILINE)
+        val m2 = standaloneMinus.find(text)
+        if (m2 != null) {
+            val v = m2.groupValues[1].toDoubleOrNull()
+            if (v != null && v in 0.01..999999.0) return Pair(v, false)
+        }
+
+        // Pattern 3: Alipay income — positive sign or income keywords
+        val incomeContext = Regex("""(?:收入|收款|转入|退款|到账).*?[+＋]?\s*[¥￥]?\s*(\d+\.?\d*)""")
+        val m3 = incomeContext.find(text)
+        if (m3 != null) {
+            val v = m3.groupValues[1].toDoubleOrNull()
+            if (v != null && v in 0.01..999999.0) return Pair(v, true)
+        }
+
+        // Pattern 4: Explicit + sign followed by amount
+        val plusSign = Regex("""[+＋]\s*[¥￥]?\s*(\d+\.?\d*)""")
+        val m4 = plusSign.find(text)
+        if (m4 != null) {
+            val v = m4.groupValues[1].toDoubleOrNull()
+            if (v != null && v in 0.01..999999.0) return Pair(v, true)
+        }
+
+        // Fall back to existing extractAmount for other payment screenshots
+        val amount = extractAmount(text) ?: return null
+
+        // Check page context for type hints
+        val isIncome = text.contains("收入") || text.contains("收款") || text.contains("转入")
+        return Pair(amount, isIncome)
     }
 
     private fun extractAmount(text: String): Double? {
