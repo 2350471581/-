@@ -15,7 +15,8 @@ import java.security.MessageDigest
 data class UpdateSource(
     val url: String,
     val priority: Int,
-    val label: String = "源 $priority"
+    val label: String = "源 $priority",
+    var latencyMs: Long = -1
 )
 
 data class UpdateInfo(
@@ -23,7 +24,9 @@ data class UpdateInfo(
     val versionName: String,
     val releaseNotes: String,
     val md5: String,
-    val sources: List<UpdateSource>
+    val sources: List<UpdateSource>,
+    val lanzouUrl: String = "",
+    val lanzouPassword: String = ""
 )
 
 sealed class UpdateResult {
@@ -50,6 +53,7 @@ object AppUpdater {
 
     fun getCurrentVersionCode(context: Context): Int {
         return try {
+            @Suppress("DEPRECATION")
             context.packageManager.getPackageInfo(context.packageName, 0).versionCode
         } catch (_: Exception) { 1 }
     }
@@ -60,7 +64,23 @@ object AppUpdater {
         } catch (_: Exception) { "1.0" }
     }
 
-    /** 多源失败重试检查更新 */
+    /** 测试单个源的响应时间（毫秒） */
+    private fun measureLatency(urlStr: String): Long {
+        return try {
+            val start = System.currentTimeMillis()
+            val conn = URL(urlStr).openConnection() as HttpURLConnection
+            conn.connectTimeout = 5000
+            conn.readTimeout = 3000
+            conn.instanceFollowRedirects = false
+            conn.requestMethod = "HEAD"
+            conn.connect()
+            val code = conn.responseCode
+            conn.disconnect()
+            if (code in 200..399) System.currentTimeMillis() - start else -1
+        } catch (_: Exception) { -1 }
+    }
+
+    /** 多源失败重试检查更新，并对下载源测速排序 */
     suspend fun checkUpdate(context: Context): UpdateResult = withContext(Dispatchers.IO) {
         val urls = listOf(CHECK_URL) + FALLBACK_CHECK_URLS
 
@@ -77,8 +97,16 @@ object AppUpdater {
                 val info = parseVersionJson(body)
                 if (info != null) {
                     val current = getCurrentVersionCode(context)
-                    return@withContext if (info.versionCode > current) {
-                        UpdateResult.Available(info)
+
+                    // 对下载源测速，按速度排序
+                    val tested = info.sources.map { source ->
+                        source.copy(latencyMs = measureLatency(source.url))
+                    }.sortedWith(compareBy<UpdateSource> { it.latencyMs }.thenBy { it.priority })
+
+                    val sortedInfo = info.copy(sources = tested)
+
+                    return@withContext if (sortedInfo.versionCode > current) {
+                        UpdateResult.Available(sortedInfo)
                     } else {
                         UpdateResult.UpToDate
                     }
@@ -121,7 +149,9 @@ object AppUpdater {
                 versionName = actual.getString("versionName"),
                 releaseNotes = actual.optString("releaseNotes", ""),
                 md5 = actual.optString("md5", ""),
-                sources = sources
+                sources = sources,
+                lanzouUrl = actual.optString("lanzouUrl", ""),
+                lanzouPassword = actual.optString("lanzouPassword", "")
             )
         } catch (_: Exception) { null }
     }
@@ -130,7 +160,7 @@ object AppUpdater {
      * 多源下载 + 断点续传 + MD5 校验
      *
      * 1. 如果本地已有完整 APK 且 MD5 匹配 → 直接返回
-     * 2. 按优先级排序源，上次成功的源优先
+     * 2. 按优先级排序源，上次成功的源优先，可用的源优先
      * 3. 逐个尝试，失败自动切下一个源
      * 4. 支持 HTTP Range 续传（.tmp 文件）
      * 5. 下载完校验 MD5，不匹配则删掉重试下一个源
@@ -153,7 +183,14 @@ object AppUpdater {
             file.delete()
         }
 
-        val sorted = info.sources.sortedBy { it.priority }
+        // 过滤蓝奏云（非直链），只保留直链下载源
+        val directSources = info.sources.filter { !it.url.contains("lanzou") }
+
+        // 可用的源（latency != -1）排前面，不可用的排最后，同可用性按 priority
+        val sorted = directSources.sortedWith(
+            compareBy<UpdateSource> { if (it.latencyMs >= 0) 0 else 1 }
+                .thenBy { it.priority }
+        )
         if (sorted.isEmpty()) {
             return@withContext DownloadResult.Error("没有可用的下载源")
         }
@@ -171,9 +208,7 @@ object AppUpdater {
                     prefs.edit().putString(KEY_LAST_SOURCE, source.url).apply()
                     return@withContext r
                 }
-                is DownloadResult.Error -> {
-                    // 继续尝试下一个源
-                }
+                is DownloadResult.Error -> { }
             }
         }
         DownloadResult.Error("所有下载源均失败")

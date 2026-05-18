@@ -748,7 +748,7 @@ fun ProfileScreen(
                                     shape = RoundedCornerShape(10.dp),
                                     modifier = Modifier.weight(1f)
                                 ) { Text("下载更新") }
-                                OutlinedButton(
+                                Button(
                                     onClick = { showManualUpdateDialog = true },
                                     shape = RoundedCornerShape(10.dp),
                                     modifier = Modifier.weight(1f)
@@ -805,7 +805,7 @@ fun ProfileScreen(
                                     shape = RoundedCornerShape(10.dp),
                                     modifier = Modifier.weight(1f)
                                 ) { Text("重试") }
-                                OutlinedButton(
+                                Button(
                                     onClick = { showManualUpdateDialog = true },
                                     shape = RoundedCornerShape(10.dp),
                                     modifier = Modifier.weight(1f)
@@ -1015,53 +1015,106 @@ private fun ManualUpdateDialog(
         },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                // 直接下载源
-                if (sources.isNotEmpty()) {
-                    Text("下载源", fontSize = 13.sp, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    sources.forEach { src ->
-                        Surface(
-                            onClick = { copyToClipboard(src.url, "已复制 ${src.label}") },
-                            shape = RoundedCornerShape(10.dp),
-                            color = MaterialTheme.colorScheme.surfaceVariant,
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(10.dp),
-                                verticalAlignment = Alignment.CenterVertically
+                // ── 蓝奏云推荐（置顶 + 星标） ──
+                if (lanzouUrl.isNotBlank()) {
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(modifier = Modifier.padding(12.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text("⭐", fontSize = 16.sp)
+                                Spacer(Modifier.width(6.dp))
+                                Text(
+                                    "蓝奏云 推荐",
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                            Spacer(Modifier.height(8.dp))
+
+                            // 下载链接
+                            Text("链接", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Spacer(Modifier.height(4.dp))
+                            Surface(
+                                onClick = { copyToClipboard(lanzouUrl, "蓝奏云链接已复制") },
+                                shape = RoundedCornerShape(8.dp),
+                                color = MaterialTheme.colorScheme.surfaceVariant,
+                                modifier = Modifier.fillMaxWidth()
                             ) {
-                                Column(modifier = Modifier.weight(1f)) {
+                                Row(
+                                    modifier = Modifier.padding(10.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
                                     Text(
-                                        text = src.label,
+                                        text = lanzouUrl,
                                         fontSize = 12.sp,
-                                        fontWeight = FontWeight.Medium,
-                                        color = MaterialTheme.colorScheme.primary
-                                    )
-                                    Text(
-                                        text = src.url,
-                                        fontSize = 11.sp,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                                        color = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.weight(1f),
                                         maxLines = 2
                                     )
+                                    Spacer(Modifier.width(8.dp))
+                                    Icon(
+                                        Icons.Default.ContentCopy,
+                                        contentDescription = "复制",
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(18.dp)
+                                    )
                                 }
-                                Spacer(Modifier.width(8.dp))
-                                Icon(
-                                    Icons.Default.ContentCopy,
-                                    contentDescription = "复制",
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(18.dp)
-                                )
+                            }
+
+                            // 密码
+                            Spacer(Modifier.height(6.dp))
+                            Text("密码", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Spacer(Modifier.height(4.dp))
+                            Surface(
+                                onClick = { copyToClipboard(lanzouPassword, "密码已复制") },
+                                shape = RoundedCornerShape(8.dp),
+                                color = MaterialTheme.colorScheme.surfaceVariant,
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(10.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = lanzouPassword.ifEmpty { "无密码" },
+                                        fontSize = 16.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.onSurface,
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                    Spacer(Modifier.width(8.dp))
+                                    Icon(
+                                        Icons.Default.ContentCopy,
+                                        contentDescription = "复制",
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                }
                             }
                         }
                     }
+
+                    // 备用源分隔
+                    if (sources.isNotEmpty()) {
+                        Spacer(Modifier.height(4.dp))
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
+                        Text(
+                            "备用下载源",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
 
-                // 蓝奏云链接
-                if (lanzouUrl.isNotBlank()) {
-                    HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
-                    Text("蓝奏云下载", fontSize = 13.sp, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-
+                // ── 备用下载源 ──
+                sources.forEach { src ->
                     Surface(
-                        onClick = { copyToClipboard(lanzouUrl, "蓝奏云链接已复制") },
+                        onClick = { copyToClipboard(src.url, "已复制 ${src.label}") },
                         shape = RoundedCornerShape(10.dp),
                         color = MaterialTheme.colorScheme.surfaceVariant,
                         modifier = Modifier.fillMaxWidth()
@@ -1070,49 +1123,27 @@ private fun ManualUpdateDialog(
                             modifier = Modifier.padding(10.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text(
-                                text = lanzouUrl,
-                                fontSize = 12.sp,
-                                color = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.weight(1f),
-                                maxLines = 2
-                            )
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = src.label,
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Text(
+                                    text = src.url,
+                                    fontSize = 11.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                                    maxLines = 2
+                                )
+                            }
                             Spacer(Modifier.width(8.dp))
                             Icon(
                                 Icons.Default.ContentCopy,
                                 contentDescription = "复制",
-                                tint = MaterialTheme.colorScheme.primary,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
                                 modifier = Modifier.size(18.dp)
                             )
-                        }
-                    }
-
-                    if (lanzouPassword.isNotBlank()) {
-                        Surface(
-                            onClick = { copyToClipboard(lanzouPassword, "蓝奏云密码已复制") },
-                            shape = RoundedCornerShape(10.dp),
-                            color = MaterialTheme.colorScheme.surfaceVariant,
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(10.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text("密码: ", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                Text(
-                                    text = lanzouPassword,
-                                    fontSize = 14.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.onSurface
-                                )
-                                Spacer(Modifier.weight(1f))
-                                Icon(
-                                    Icons.Default.ContentCopy,
-                                    contentDescription = "复制",
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(18.dp)
-                                )
-                            }
                         }
                     }
                 }

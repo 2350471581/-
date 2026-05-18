@@ -3,22 +3,27 @@
   "versionName": "0.7",
   "releaseNotes": "v0.7 更新内容：\n- 新增日账单分析视图\n- AI 月账单总结功能\n- 图表上下滑动查看\n- 主题配色升级（莫奈灰高级色系）\n- 界面优化与细节调整",
   "md5": "",
-  "lanzouUrl": "",
-  "lanzouPassword": "",
+  "lanzouUrl": "https://wwbnt.lanzoul.com/iGDwC3ps5pli",
+  "lanzouPassword": "6666",
   "sources": [
     {
-      "url": "https://cdn.jsdelivr.net/gh/2350471581/-@v0.7/default.apk",
+      "url": "https://wwbnt.lanzoul.com/iGDwC3ps5pli",
       "priority": 0,
+      "label": "蓝奏云 ★推荐"
+    },
+    {
+      "url": "https://cdn.jsdelivr.net/gh/2350471581/-@v0.7/default.apk",
+      "priority": 1,
       "label": "jsDelivr 镜像"
     },
     {
       "url": "https://github.com/2350471581/-/releases/download/v0.7/default.apk",
-      "priority": 1,
+      "priority": 2,
       "label": "GitHub 直连"
     },
     {
       "url": "https://ghproxy.com/https://github.com/2350471581/-/releases/download/v0.7/default.apk",
-      "priority": 2,
+      "priority": 3,
       "label": "ghproxy 备用"
     }
   ]
