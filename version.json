@@ -7,24 +7,9 @@
   "lanzouPassword": "6666",
   "sources": [
     {
-      "url": "https://wwbnt.lanzoul.com/iGDwC3ps5pli",
-      "priority": 0,
-      "label": "蓝奏云 ★推荐"
-    },
-    {
-      "url": "https://cdn.jsdelivr.net/gh/2350471581/-@v0.7/default.apk",
-      "priority": 1,
-      "label": "jsDelivr 镜像"
-    },
-    {
       "url": "https://github.com/2350471581/-/releases/download/v0.7/default.apk",
-      "priority": 2,
+      "priority": 1,
       "label": "GitHub 直连"
-    },
-    {
-      "url": "https://ghproxy.com/https://github.com/2350471581/-/releases/download/v0.7/default.apk",
-      "priority": 3,
-      "label": "ghproxy 备用"
     }
   ]
 }
