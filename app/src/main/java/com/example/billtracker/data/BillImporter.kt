@@ -8,7 +8,8 @@ data class ParsedBill(
     val amount: Double,
     val type: TransactionType = TransactionType.EXPENSE,
     val category: String = "其他",
-    val description: String = ""
+    val description: String = "",
+    val source: TransactionSource = TransactionSource.MANUAL
 )
 
 object BillImporter {
@@ -18,6 +19,16 @@ object BillImporter {
         "MM-dd", "MM/dd",
         "yyyy年MM月dd日", "MM月dd日"
     )
+
+    private fun detectPaymentSource(text: String): TransactionSource {
+        val t = text.lowercase().replace(" ", "")
+        return when {
+            t.contains("微信") || t.contains("wechat") -> TransactionSource.WECHAT
+            t.contains("支付宝") || t.contains("alipay") -> TransactionSource.ALIPAY
+            t.contains("银行") || t.contains("bank") || t.contains("银行卡") -> TransactionSource.BANK
+            else -> TransactionSource.MANUAL
+        }
+    }
 
     fun parseCsv(content: String): List<ParsedBill> {
         val lines = content.trim().lines().filter { it.isNotBlank() }
@@ -49,6 +60,7 @@ object BillImporter {
                 name.contains("类型") || name.contains("type") || name.contains("收支") -> "type"
                 name.contains("分类") || name.contains("category") -> "category"
                 name.contains("备注") || name.contains("description") || name.contains("desc") || name.contains("说明") -> "description"
+                name.contains("支付方式") || name.contains("来源") || name.contains("source") -> "source"
                 else -> null
             }
             if (key != null) index to key else null
@@ -65,6 +77,8 @@ object BillImporter {
             var desc = ""
             var dateMillis = System.currentTimeMillis()
 
+            var source = TransactionSource.MANUAL
+
             colMap.forEach { (index, key) ->
                 val value = cols.getOrNull(index)?.trim() ?: return@forEach
                 when (key) {
@@ -77,6 +91,7 @@ object BillImporter {
                     }
                     "category" -> category = value.ifBlank { "其他" }
                     "description" -> desc = value
+                    "source" -> source = detectPaymentSource(value)
                     "date" -> {
                         val parsed = tryParseDate(value)
                         if (parsed != null) dateMillis = parsed
@@ -84,8 +99,13 @@ object BillImporter {
                 }
             }
 
+            // Fallback: detect payment source from description and category
+            if (source == TransactionSource.MANUAL) {
+                source = detectPaymentSource("$desc $category")
+            }
+
             val amt = amount ?: return null
-            return ParsedBill(dateMillis, amt, type, category, desc)
+            return ParsedBill(dateMillis, amt, type, category, desc, source)
         }
 
         // Fallback: positional parsing (date, amount, type, category, description)
@@ -99,8 +119,9 @@ object BillImporter {
         val cat = cols.getOrNull(3).takeIf { !it.isNullOrBlank() } ?: "其他"
         val desc = cols.getOrNull(4).orEmpty()
         val dateMillis = cols.getOrNull(0)?.let { tryParseDate(it) } ?: System.currentTimeMillis()
+        val source = detectPaymentSource("$desc $cat ${cols.joinToString(" ")}")
 
-        return ParsedBill(dateMillis, amt, t, cat, desc)
+        return ParsedBill(dateMillis, amt, t, cat, desc, source)
     }
 
     private fun splitCsvLine(line: String): List<String> {
@@ -153,10 +174,13 @@ object BillImporter {
         val type = if (isIncome) TransactionType.INCOME else TransactionType.EXPENSE
         val defaultCategory = if (isIncome) "工资" else "购物"
 
+        // Detect payment source from OCR text
+        val source = detectPaymentSource(fullText + " " + lines.joinToString(" "))
+
         // Extract date
         val dateMillis = extractDate(fullText) ?: System.currentTimeMillis()
 
-        bills.add(ParsedBill(dateMillis, amount, type, defaultCategory, merchant))
+        bills.add(ParsedBill(dateMillis, amount, type, defaultCategory, merchant, source))
         return bills
     }
 

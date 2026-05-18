@@ -1,13 +1,21 @@
 package com.example.billtracker.ui
 
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -16,15 +24,22 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import com.example.billtracker.data.BillImporter
 import com.example.billtracker.data.ParsedBill
+import com.example.billtracker.data.TransactionSource
 import com.example.billtracker.data.TransactionType
+import com.example.billtracker.ui.components.TagChip
 import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.text.TextRecognition
 import com.google.mlkit.vision.text.chinese.ChineseTextRecognizerOptions
@@ -52,6 +67,12 @@ fun ImportScreen(
     var loadingText by remember { mutableStateOf("") }
     var editIndex by remember { mutableIntStateOf(-1) }
     var showSuccess by remember { mutableStateOf(false) }
+
+    // Batch image import state
+    var selectedImageUris by remember { mutableStateOf<List<Uri>>(emptyList()) }
+    var checkedIndices by remember { mutableStateOf<Set<Int>>(emptySet()) }
+    var previewUriIndex by remember { mutableIntStateOf(-1) }
+    var showGallery by remember { mutableStateOf(false) }
 
     // CSV file picker
     val csvPicker = rememberLauncherForActivityResult(
@@ -81,46 +102,35 @@ fun ImportScreen(
         }
     }
 
-    // Image picker for OCR
+    // Image picker for OCR (multi-select)
     val imagePicker = rememberLauncherForActivityResult(
-        ActivityResultContracts.GetContent()
-    ) { uri: Uri? ->
-        if (uri == null) return@rememberLauncherForActivityResult
-        isLoading = true
-        loadingText = "正在识别图片中的文字..."
-        scope.launch {
+        ActivityResultContracts.GetMultipleContents()
+    ) { uris: List<Uri> ->
+        if (uris.isEmpty()) return@rememberLauncherForActivityResult
+        selectedImageUris = uris
+        checkedIndices = uris.indices.toSet()
+        showGallery = true
+        bills = emptyList()
+        showSuccess = false
+    }
+
+    // OCR processing function
+    suspend fun runOcrOnImage(uri: Uri): String? {
+        return withContext(Dispatchers.Default) {
+            val image = InputImage.fromFilePath(context, uri)
+            val recognizer = TextRecognition.getClient(ChineseTextRecognizerOptions.Builder().build())
             try {
-                val image = InputImage.fromFilePath(context, uri)
-                val recognizer = TextRecognition.getClient(ChineseTextRecognizerOptions.Builder().build())
-                val ocrResult = withContext(Dispatchers.Default) {
-                    val latch = java.util.concurrent.CountDownLatch(1)
-                    var mlResult: com.google.mlkit.vision.text.Text? = null
-                    var mlError: Exception? = null
-                    recognizer.process(image)
-                        .addOnSuccessListener { mlResult = it; latch.countDown() }
-                        .addOnFailureListener { mlError = it; latch.countDown() }
-                    latch.await()
-                    if (mlError != null) throw mlError!!
-                    mlResult!!
-                }
-                recognizer.close()
-                val rawText = ocrResult.text
-                if (rawText.isBlank()) {
-                    snackbarHostState.showSnackbar("未能识别出图片中的文字")
-                    isLoading = false
-                    return@launch
-                }
-                val parsed = withContext(Dispatchers.Default) { BillImporter.parseOcrText(rawText) }
-                if (parsed.isEmpty()) {
-                    snackbarHostState.showSnackbar("未能从图片中识别出账单金额")
-                } else {
-                    bills = parsed
-                    snackbarHostState.showSnackbar("成功识别 ${parsed.size} 条账单")
-                }
-            } catch (e: Exception) {
-                snackbarHostState.showSnackbar("识别失败：${e.message}")
+                val latch = java.util.concurrent.CountDownLatch(1)
+                var mlResult: com.google.mlkit.vision.text.Text? = null
+                var mlError: Exception? = null
+                recognizer.process(image)
+                    .addOnSuccessListener { mlResult = it; latch.countDown() }
+                    .addOnFailureListener { mlError = it; latch.countDown() }
+                latch.await()
+                if (mlError != null) throw mlError!!
+                mlResult!!.text
             } finally {
-                isLoading = false
+                recognizer.close()
             }
         }
     }
@@ -227,13 +237,117 @@ fun ImportScreen(
                         Spacer(Modifier.height(8.dp))
                         Text("从图片导入", fontSize = 14.sp, fontWeight = FontWeight.Medium,
                             color = MaterialTheme.colorScheme.onSurface)
-                        Text("识别支付截图", fontSize = 12.sp,
+                        Text("批量识别支付截图", fontSize = 12.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f))
                     }
                 }
             }
 
             Spacer(Modifier.height(16.dp))
+
+            // ── Batch Image Gallery ──
+            if (showGallery && selectedImageUris.isNotEmpty() && !showSuccess) {
+                // Header row
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "已选择 ${selectedImageUris.size} 张图片",
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.weight(1f)
+                    )
+                    TextButton(onClick = {
+                        selectedImageUris = emptyList()
+                        checkedIndices = emptySet()
+                        showGallery = false
+                    }) {
+                        Text("清空", fontSize = 13.sp, color = Color(0xFFEA6B5C))
+                    }
+                }
+                Spacer(Modifier.height(8.dp))
+
+                // Thumbnail grid (3 columns)
+                LazyVerticalGrid(
+                    columns = GridCells.Fixed(3),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 400.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    items(selectedImageUris.size) { index ->
+                        val uri = selectedImageUris[index]
+                        ImageThumbnailCard(
+                            uri = uri,
+                            checked = index in checkedIndices,
+                            onToggleCheck = {
+                                checkedIndices = if (index in checkedIndices) {
+                                    checkedIndices - index
+                                } else {
+                                    checkedIndices + index
+                                }
+                            },
+                            onTap = { previewUriIndex = index }
+                        )
+                    }
+                }
+
+                Spacer(Modifier.height(12.dp))
+
+                // Batch OCR trigger button
+                Button(
+                    onClick = {
+                        isLoading = true
+                        loadingText = "正在识别..."
+                        scope.launch {
+                            try {
+                                val allBills = mutableListOf<ParsedBill>()
+                                val urisToProcess = selectedImageUris
+                                    .filterIndexed { idx, _ -> idx in checkedIndices }
+
+                                urisToProcess.forEachIndexed { i, uri ->
+                                    loadingText = "正在识别图片 (${i + 1}/${urisToProcess.size})..."
+                                    val rawText = runOcrOnImage(uri)
+                                    if (!rawText.isNullOrBlank()) {
+                                        val parsed = withContext(Dispatchers.Default) {
+                                            BillImporter.parseOcrText(rawText)
+                                        }
+                                        allBills.addAll(parsed)
+                                    }
+                                }
+
+                                if (allBills.isEmpty()) {
+                                    snackbarHostState.showSnackbar("未能从所选图片中识别出账单")
+                                } else {
+                                    bills = allBills
+                                    showGallery = false
+                                    snackbarHostState.showSnackbar("成功识别 ${allBills.size} 条账单")
+                                }
+                            } catch (e: Exception) {
+                                snackbarHostState.showSnackbar("识别失败：${e.message}")
+                            } finally {
+                                isLoading = false
+                            }
+                        }
+                    },
+                    enabled = checkedIndices.isNotEmpty() && !isLoading,
+                    modifier = Modifier.fillMaxWidth().height(48.dp),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Icon(Icons.Default.Search, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        text = if (checkedIndices.size == selectedImageUris.size) "识别全部图片"
+                               else "识别选中图片（${checkedIndices.size}张）",
+                        fontSize = 16.sp
+                    )
+                }
+
+                Spacer(Modifier.height(16.dp))
+            }
 
             // 加载中
             if (isLoading) {
@@ -308,7 +422,7 @@ fun ImportScreen(
             }
 
             // 初始提示
-            if (bills.isEmpty() && !isLoading && !showSuccess) {
+            if (bills.isEmpty() && !isLoading && !showSuccess && !showGallery) {
                 Box(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
@@ -340,6 +454,24 @@ fun ImportScreen(
             onSave = { updated ->
                 bills = bills.toMutableList().also { it[editIndex] = updated }
                 editIndex = -1
+            }
+        )
+    }
+
+    // Full-screen image preview
+    if (previewUriIndex in selectedImageUris.indices) {
+        FullScreenImagePreview(
+            uri = selectedImageUris[previewUriIndex],
+            isChecked = previewUriIndex in checkedIndices,
+            onSelect = {
+                checkedIndices = checkedIndices + previewUriIndex
+                previewUriIndex = -1
+            },
+            onCancel = {
+                previewUriIndex = -1
+            },
+            onDismiss = {
+                previewUriIndex = -1
             }
         )
     }
@@ -384,14 +516,36 @@ private fun ParsedBillCard(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-            // 分类 + 描述
+            // 分类 + 描述 + 支付方式
             Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = bill.category,
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = bill.category,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Spacer(Modifier.width(6.dp))
+                    val sourceLabel = when (bill.source) {
+                        TransactionSource.WECHAT -> "微信"
+                        TransactionSource.ALIPAY -> "支付宝"
+                        TransactionSource.BANK -> "银行"
+                        TransactionSource.MANUAL -> ""
+                    }
+                    if (sourceLabel.isNotEmpty()) {
+                        Surface(
+                            shape = RoundedCornerShape(4.dp),
+                            color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
+                        ) {
+                            Text(
+                                text = sourceLabel,
+                                fontSize = 10.sp,
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.padding(horizontal = 5.dp, vertical = 2.dp)
+                            )
+                        }
+                    }
+                }
                 if (bill.description.isNotBlank()) {
                     Text(
                         text = bill.description,
@@ -453,23 +607,15 @@ private fun EditBillDialog(
                 Spacer(Modifier.height(8.dp))
                 // 收支类型
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    FilterChip(
+                    TagChip(
                         selected = isExpense,
                         onClick = { isExpense = true },
-                        label = { Text("支出") },
-                        colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = Color(0xFFEA6B5C).copy(alpha = 0.15f),
-                            selectedLabelColor = Color(0xFFEA6B5C)
-                        )
+                        label = "支出"
                     )
-                    FilterChip(
+                    TagChip(
                         selected = !isExpense,
                         onClick = { isExpense = false },
-                        label = { Text("收入") },
-                        colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = Color(0xFF4CAF7A).copy(alpha = 0.15f),
-                            selectedLabelColor = Color(0xFF4CAF7A)
-                        )
+                        label = "收入"
                     )
                 }
                 Spacer(Modifier.height(12.dp))
@@ -479,10 +625,10 @@ private fun EditBillDialog(
                 @OptIn(ExperimentalLayoutApi::class)
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     categories.forEach { cat ->
-                        FilterChip(
+                        TagChip(
                             selected = category == cat,
                             onClick = { category = cat },
-                            label = { Text(cat, fontSize = 12.sp) }
+                            label = cat
                         )
                     }
                 }
@@ -518,4 +664,189 @@ private fun EditBillDialog(
             }
         }
     )
+}
+
+// ── Circular checkbox for thumbnail selection ──
+@Composable
+private fun CircularCheckbox(
+    checked: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        onClick = onClick,
+        shape = CircleShape,
+        color = if (checked) MaterialTheme.colorScheme.primary else Color.White.copy(alpha = 0.8f),
+        border = if (!checked) BorderStroke(2.dp, Color.White) else null,
+        modifier = modifier.size(24.dp)
+    ) {
+        Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+            if (checked) {
+                Icon(
+                    Icons.Default.Check,
+                    contentDescription = "已选择",
+                    tint = Color.White,
+                    modifier = Modifier.size(16.dp)
+                )
+            }
+        }
+    }
+}
+
+// ── Thumbnail card with image and checkbox ──
+@Composable
+private fun ImageThumbnailCard(
+    uri: Uri,
+    checked: Boolean,
+    onToggleCheck: () -> Unit,
+    onTap: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val context = LocalContext.current
+    val bitmap = remember(uri) {
+        try {
+            val options = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+            context.contentResolver.openInputStream(uri)?.use { stream ->
+                BitmapFactory.decodeStream(stream, null, options)
+            }
+            options.inSampleSize = maxOf(
+                options.outWidth / 300,
+                options.outHeight / 300,
+                1
+            )
+            options.inJustDecodeBounds = false
+            context.contentResolver.openInputStream(uri)?.use { stream ->
+                BitmapFactory.decodeStream(stream, null, options)
+            }
+        } catch (_: Exception) { null }
+    }
+
+    Card(
+        modifier = modifier
+            .fillMaxWidth()
+            .aspectRatio(1f)
+            .clickable(onClick = onTap),
+        shape = RoundedCornerShape(12.dp)
+    ) {
+        Box(contentAlignment = Alignment.TopEnd) {
+            if (bitmap != null) {
+                Image(
+                    bitmap = bitmap.asImageBitmap(),
+                    contentDescription = "预览",
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize()
+                )
+            } else {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(MaterialTheme.colorScheme.surfaceVariant),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        Icons.Default.BrokenImage,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
+                        modifier = Modifier.size(32.dp)
+                    )
+                }
+            }
+            CircularCheckbox(
+                checked = checked,
+                onClick = onToggleCheck,
+                modifier = Modifier.padding(6.dp)
+            )
+        }
+    }
+}
+
+// ── Full-screen image preview ──
+@Composable
+private fun FullScreenImagePreview(
+    uri: Uri,
+    isChecked: Boolean,
+    onSelect: () -> Unit,
+    onCancel: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    val context = LocalContext.current
+    val bitmap = remember(uri) {
+        try {
+            val options = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+            context.contentResolver.openInputStream(uri)?.use { stream ->
+                BitmapFactory.decodeStream(stream, null, options)
+            }
+            options.inSampleSize = maxOf(
+                options.outWidth / 1200,
+                options.outHeight / 1200,
+                1
+            )
+            options.inJustDecodeBounds = false
+            context.contentResolver.openInputStream(uri)?.use { stream ->
+                BitmapFactory.decodeStream(stream, null, options)
+            }
+        } catch (_: Exception) { null }
+    }
+
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black)
+                .clickable(onClick = onDismiss)
+        ) {
+            if (bitmap != null) {
+                Image(
+                    bitmap = bitmap.asImageBitmap(),
+                    contentDescription = "全屏预览",
+                    contentScale = ContentScale.Fit,
+                    modifier = Modifier.fillMaxSize()
+                )
+            }
+
+            // Bottom bar
+            Row(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+                    .background(Color.Black.copy(alpha = 0.7f))
+                    .padding(horizontal = 24.dp, vertical = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                OutlinedButton(
+                    onClick = onCancel,
+                    shape = RoundedCornerShape(10.dp),
+                    modifier = Modifier.weight(1f),
+                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.5f))
+                ) {
+                    Text("取消", color = Color.White)
+                }
+                Button(
+                    onClick = onSelect,
+                    shape = RoundedCornerShape(10.dp),
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text(if (isChecked) "已选择" else "选择")
+                }
+            }
+
+            // Top-right close indicator
+            IconButton(
+                onClick = onDismiss,
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(16.dp)
+            ) {
+                Icon(
+                    Icons.Default.Close,
+                    contentDescription = "关闭",
+                    tint = Color.White,
+                    modifier = Modifier.size(28.dp)
+                )
+            }
+        }
+    }
 }

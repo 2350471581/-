@@ -62,7 +62,7 @@ class TransactionRepository(private val context: Context) {
             TransactionEntity(
                 amount = bill.amount,
                 type = bill.type,
-                source = MANUAL,
+                source = bill.source,
                 description = if (bill.description.isNotBlank()) "${bill.category} ${bill.description}" else bill.category,
                 dateMillis = bill.dateMillis,
                 category = bill.category
