@@ -1,23 +1,23 @@
 {
-  "versionCode": 6,
+  "versionCode": 7,
   "versionName": "0.6",
   "releaseNotes": "v0.6 更新内容：\n- 新增日账单分析视图\n- AI 月账单总结功能\n- 图表上下滑动查看\n- 主题配色升级（莫奈灰高级色系）\n- 界面优化与细节调整",
-  "md5": "",
+  "md5": "b9fe767c4317354aeda334513b896951",
   "lanzouUrl": "",
   "lanzouPassword": "",
   "sources": [
     {
-      "url": "https://cdn.jsdelivr.net/gh/2350471581/-@v0.6/default.apk",
+      "url": "https://cdn.jsdelivr.net/gh/v0.6/-@v0.6/default.apk",
       "priority": 0,
       "label": "jsDelivr 镜像"
     },
     {
-      "url": "https://github.com/2350471581/-/releases/download/v0.6/default.apk",
+      "url": "https://github.com/v0.6/-/releases/download/v0.6/default.apk",
       "priority": 1,
       "label": "GitHub 直连"
     },
     {
-      "url": "https://ghproxy.com/https://github.com/2350471581/-/releases/download/v0.6/default.apk",
+      "url": "https://ghproxy.com/https://github.com/v0.6/-/releases/download/v0.6/default.apk",
       "priority": 2,
       "label": "ghproxy 备用"
     }
