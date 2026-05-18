@@ -140,6 +140,11 @@ class PlanStorage(context: Context) {
         get() = prefs.getBoolean("ai_chat_enabled", false)
         set(value) = prefs.edit().putBoolean("ai_chat_enabled", value).apply()
 
+    // ── 自定义主题配置 ──
+    var customThemeConfigJson: String
+        get() = prefs.getString("custom_theme_config", "") ?: ""
+        set(value) = prefs.edit().putString("custom_theme_config", value).apply()
+
     // ── AI 聊天教程已展示 ──
     var aiChatTutorialDone: Boolean
         get() = prefs.getBoolean("ai_chat_tutorial_done", false)

@@ -60,7 +60,9 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.billtracker.data.TransactionEntity
 import com.example.billtracker.data.TransactionSource
 import com.example.billtracker.data.TransactionType
+import com.example.billtracker.ui.CUSTOM_THEME_INDEX
 import com.example.billtracker.ui.components.BackgroundGradient
+import com.example.billtracker.ui.components.CustomThemeBackground
 import com.example.billtracker.ui.ImportScreen
 import com.example.billtracker.ui.components.BillTrackerBottomBar
 import com.example.billtracker.viewmodel.MainViewModel
@@ -103,6 +105,7 @@ fun MainScreen(viewModel: MainViewModel = viewModel()) {
     var showManualPlanAlert by remember { mutableStateOf(false) }
 
     val themeIdx by viewModel.themeIndex.collectAsStateWithLifecycle()
+    val customThemeCfg by viewModel.customThemeConfig.collectAsStateWithLifecycle()
     val isDark = isSystemInDarkTheme()
     val gradientPair = remember(themeIdx, isDark) {
         val palette = if (isDark) DarkThemes.getOrElse(themeIdx) { DarkThemes[0] }
@@ -219,10 +222,8 @@ fun MainScreen(viewModel: MainViewModel = viewModel()) {
             }
         }
     ) { padding ->
-        BackgroundGradient(
-            gradientStart = gradientPair.first,
-            gradientEnd = gradientPair.second
-        ) {
+        val useCustomBg = themeIdx == CUSTOM_THEME_INDEX && customThemeCfg.imageUri.isNotBlank()
+        val scaffoldContent: @Composable () -> Unit = {
             Column(
                 modifier = Modifier
                     .fillMaxSize()
@@ -466,6 +467,8 @@ fun MainScreen(viewModel: MainViewModel = viewModel()) {
                     },
                     followSystemTheme = viewModel.followSystemTheme.collectAsStateWithLifecycle().value,
                     onFollowSystemThemeChange = { viewModel.setFollowSystemTheme(it) },
+                    customThemeConfig = customThemeCfg,
+                    onCustomThemeChange = { viewModel.setCustomThemeConfig(it) },
                     onExportCsv = { start, end ->
                         scope.launch {
                             val uri = viewModel.exportCsv(
@@ -505,6 +508,15 @@ fun MainScreen(viewModel: MainViewModel = viewModel()) {
                 )
             }
         }
+        }  // scaffoldContent
+
+        if (useCustomBg) {
+            CustomThemeBackground(config = customThemeCfg) { scaffoldContent() }
+        } else {
+            BackgroundGradient(
+                gradientStart = gradientPair.first,
+                gradientEnd = gradientPair.second
+            ) { scaffoldContent() }
         }
     }
 

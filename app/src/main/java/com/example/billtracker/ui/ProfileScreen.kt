@@ -1,6 +1,9 @@
 package com.example.billtracker.ui
 
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -61,7 +64,10 @@ fun ProfileScreen(
     onAiChatToggle: (Boolean) -> Unit = {},
     followSystemTheme: Boolean = false,
     onFollowSystemThemeChange: (Boolean) -> Unit = {},
+    customThemeConfig: CustomThemeConfig = CustomThemeConfig(),
+    onCustomThemeChange: (CustomThemeConfig) -> Unit = {},
 ) {
+    var showCustomThemeDialog by remember { mutableStateOf(false) }
     var showNicknameDialog by remember { mutableStateOf(false) }
     var showAvatarDialog by remember { mutableStateOf(false) }
     var showThemeDialog by remember { mutableStateOf(false) }
@@ -405,6 +411,45 @@ fun ProfileScreen(
                         }
                     }
                     Spacer(Modifier.height(4.dp))
+
+                    // ── 自定义 ──
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                if (followSystemTheme) onFollowSystemThemeChange(false)
+                                onThemeChange(CUSTOM_THEME_INDEX)
+                                showThemeDialog = false
+                                showCustomThemeDialog = true
+                            }
+                            .padding(vertical = 12.dp, horizontal = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Surface(
+                            shape = CircleShape,
+                            color = if (customThemeConfig.imageUri.isNotBlank() && themeIndex == CUSTOM_THEME_INDEX)
+                                Color(customThemeConfig.extractedPrimary)
+                            else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
+                            modifier = Modifier.size(28.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Text("🖼", fontSize = 14.sp)
+                            }
+                        }
+                        Spacer(Modifier.width(14.dp))
+                        Text(
+                            text = if (customThemeConfig.imageUri.isNotBlank()) "自定义 ✓" else "自定义",
+                            fontSize = 16.sp,
+                            color = if (themeIndex == CUSTOM_THEME_INDEX) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+                            fontWeight = if (themeIndex == CUSTOM_THEME_INDEX) FontWeight.Bold else FontWeight.Normal
+                        )
+                        if (themeIndex == CUSTOM_THEME_INDEX) {
+                            Spacer(Modifier.weight(1f))
+                            Icon(Icons.Default.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
+                        }
+                    }
+
+                    Spacer(Modifier.height(4.dp))
                     HorizontalDivider(modifier = Modifier.padding(horizontal = 4.dp), color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
                     Spacer(Modifier.height(4.dp))
 
@@ -441,6 +486,18 @@ fun ProfileScreen(
             confirmButton = {
                 TextButton(onClick = { showThemeDialog = false }) { Text("关闭", color = MaterialTheme.colorScheme.onSurfaceVariant) }
             }
+        )
+    }
+
+    // ── 自定义主题配置弹窗 ──
+    if (showCustomThemeDialog) {
+        CustomThemeConfigDialog(
+            config = customThemeConfig,
+            onConfirm = { newConfig ->
+                onCustomThemeChange(newConfig)
+                showCustomThemeDialog = false
+            },
+            onDismiss = { showCustomThemeDialog = false }
         )
     }
 
@@ -852,6 +909,223 @@ fun ProfileScreen(
             versionName = info?.versionName ?: "",
             onDismiss = { showManualUpdateDialog = false }
         )
+    }
+}
+
+// ── 自定义主题配置弹窗 ──
+@Composable
+private fun CustomThemeConfigDialog(
+    config: CustomThemeConfig,
+    onConfirm: (CustomThemeConfig) -> Unit,
+    onDismiss: () -> Unit
+) {
+    val context = LocalContext.current
+    var imageUri by remember { mutableStateOf(config.imageUri) }
+    var blurRadius by remember { mutableStateOf(config.blurRadius) }
+    var glassOpacity by remember { mutableStateOf(config.glassOpacity) }
+    var extractedPrimary by remember { mutableStateOf(Color(config.extractedPrimary)) }
+    var isLoadingColor by remember { mutableStateOf(false) }
+
+    val scope = rememberCoroutineScope()
+
+    val imagePickerLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        uri?.let {
+            imageUri = it.toString()
+            isLoadingColor = true
+            scope.launch {
+                val color = withContext(Dispatchers.IO) {
+                    try {
+                        val bitmap = context.contentResolver.openInputStream(it)?.use { stream ->
+                            BitmapFactory.decodeStream(stream)
+                        }
+                        if (bitmap != null) {
+                            val palette = androidx.palette.graphics.Palette.from(bitmap).generate()
+                            val dominant = palette.getDominantColor(0xFFCDDBF7.toInt())
+                            Color(dominant)
+                        } else null
+                    } catch (_: Exception) { null }
+                }
+                if (color != null) extractedPrimary = color
+                isLoadingColor = false
+            }
+        }
+    }
+
+    // Load bitmap for preview
+    val previewBitmap = remember(imageUri) {
+        if (imageUri.isNotBlank()) {
+            try {
+                val uri = Uri.parse(imageUri)
+                context.contentResolver.openInputStream(uri)?.use { stream ->
+                    BitmapFactory.decodeStream(stream)
+                }
+            } catch (_: Exception) { null }
+        } else null
+    }
+
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        Card(
+            modifier = Modifier.fillMaxWidth(0.9f).fillMaxHeight(0.75f),
+            shape = RoundedCornerShape(24.dp),
+            colors = CardDefaults.cardColors(containerColor = Color(0xFFF5F5F5))
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .padding(20.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                Text(
+                    "自定义主题",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 20.sp,
+                    modifier = Modifier.fillMaxWidth(),
+                    textAlign = TextAlign.Center
+                )
+
+                // ── 背景图片预览 ──
+                Text("背景图片", fontSize = 13.sp, fontWeight = FontWeight.Medium,
+                    color = Color(0xFF5F6368))
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(160.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(MaterialTheme.colorScheme.surfaceVariant),
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (previewBitmap != null) {
+                        Image(
+                            bitmap = previewBitmap.asImageBitmap(),
+                            contentDescription = "背景预览",
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop
+                        )
+                        // Glass overlay preview
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(
+                                    extractedPrimary.copy(alpha = glassOpacity)
+                                )
+                        )
+                    } else {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Icon(
+                                Icons.Default.Image,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
+                                modifier = Modifier.size(48.dp)
+                            )
+                            Spacer(Modifier.height(8.dp))
+                            Text("选择一张图片作为背景",
+                                fontSize = 13.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f))
+                        }
+                    }
+                }
+
+                // 选择图片按钮
+                Button(
+                    onClick = { imagePickerLauncher.launch("image/*") },
+                    shape = RoundedCornerShape(10.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = extractedPrimary)
+                ) {
+                    Icon(Icons.Default.PhotoLibrary, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text(if (imageUri.isNotBlank()) "更换图片" else "选择图片")
+                }
+
+                // ── 模糊半径 ──
+                Text("模糊半径: ${blurRadius.toInt()}", fontSize = 13.sp, fontWeight = FontWeight.Medium,
+                    color = Color(0xFF5F6368))
+                Slider(
+                    value = blurRadius,
+                    onValueChange = { blurRadius = it },
+                    valueRange = 0f..25f,
+                    colors = SliderDefaults.colors(
+                        thumbColor = extractedPrimary,
+                        activeTrackColor = extractedPrimary
+                    )
+                )
+
+                // ── 毛玻璃透明度 ──
+                Text("毛玻璃透明度: ${(glassOpacity * 100).toInt()}%", fontSize = 13.sp,
+                    fontWeight = FontWeight.Medium, color = Color(0xFF5F6368))
+                Slider(
+                    value = glassOpacity,
+                    onValueChange = { glassOpacity = it },
+                    valueRange = 0f..0.8f,
+                    colors = SliderDefaults.colors(
+                        thumbColor = extractedPrimary,
+                        activeTrackColor = extractedPrimary
+                    )
+                )
+
+                // ── 提取的主色调 ──
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("按钮配色", fontSize = 13.sp, fontWeight = FontWeight.Medium,
+                        color = Color(0xFF5F6368))
+                    Spacer(Modifier.width(12.dp))
+                    if (isLoadingColor) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(20.dp),
+                            strokeWidth = 2.dp,
+                            color = extractedPrimary
+                        )
+                    } else {
+                        Surface(
+                            shape = CircleShape,
+                            color = extractedPrimary,
+                            modifier = Modifier.size(28.dp),
+                            border = androidx.compose.foundation.BorderStroke(2.dp, Color.White)
+                        ) {}
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            "#%06X".format(extractedPrimary.value.toLong() and 0xFFFFFF),
+                            fontSize = 12.sp,
+                            color = Color(0xFF9AA0A6)
+                        )
+                    }
+                }
+
+                // ── 按钮 ──
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    OutlinedButton(
+                        onClick = {
+                            // Reset
+                            onConfirm(CustomThemeConfig())
+                        },
+                        shape = RoundedCornerShape(10.dp),
+                        modifier = Modifier.weight(1f)
+                    ) { Text("重置") }
+                    Button(
+                        onClick = {
+                            onConfirm(
+                                CustomThemeConfig(
+                                    imageUri = imageUri,
+                                    blurRadius = blurRadius,
+                                    glassOpacity = glassOpacity,
+                                    extractedPrimary = extractedPrimary.value.toLong()
+                                )
+                            )
+                        },
+                        shape = RoundedCornerShape(10.dp),
+                        modifier = Modifier.weight(1f),
+                        colors = ButtonDefaults.buttonColors(containerColor = extractedPrimary)
+                    ) { Text("确定") }
+                }
+            }
+        }
     }
 }
 
@@ -1376,12 +1650,15 @@ private fun AboutScreen(onBack: () -> Unit) {
                     Spacer(Modifier.height(8.dp))
                     val features = listOf(
                         "手动/自动记账：支持手动输入和自动读取通知栏账单",
-                        "AI 聊天记账：自然语言描述即可记账",
+                        "AI 聊天记账：自然语言描述即可记账，支持 DeepSeek 大模型",
                         "智能分类：自动识别交易类别（餐饮、交通、购物等）",
                         "账单分析：收支对比柱状图、支出分类饼图",
                         "计划管理：设定预算目标，跟踪消费进度",
-                        "多主题：支持多种温馨配色主题",
-                        "数据导出：支持 CSV 表格和图片导出，可选择时间范围"
+                        "多主题配色：8 种内置主题 + 自定义图片背景，支持模糊与毛玻璃效果",
+                        "数据导出：支持 CSV 表格和图片导出，可选择时间范围",
+                        "图片导入：支持批量图片 OCR 识别支付宝/微信账单",
+                        "支付方式识别：自动检测微信、支付宝、银行卡等支付来源",
+                        "应用更新：支持在线检查更新，蓝奏云 + GitHub 双通道下载"
                     )
                     features.forEach { f ->
                         Row(modifier = Modifier.padding(vertical = 3.dp)) {

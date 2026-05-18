@@ -7,6 +7,7 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Analytics
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Receipt
 import androidx.compose.material.icons.filled.Star
@@ -37,48 +38,23 @@ fun BillTrackerBottomBar(
     val tabs = listOf(
         NavTab("记账", Icons.Default.Receipt),
         NavTab("计划", Icons.Default.Star),
+        NavTab("分析", Icons.Default.Analytics),
         NavTab("我的", Icons.Default.Person)
     )
 
     val primary = MaterialTheme.colorScheme.primary
-    val isDark = isSystemInDarkTheme()
+    val surface = MaterialTheme.colorScheme.surface
 
-    // iOS 风格玻璃背景：半透明基色 + 主题色淡染
-    val baseAlpha = 0.45f
-    val baseColor = if (isDark) Color(0xFF1A1A1A).copy(alpha = baseAlpha)
-                   else Color.White.copy(alpha = baseAlpha)
-
-    Box(
-        modifier = modifier.fillMaxWidth()
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        color = surface,
+        shadowElevation = 2.dp
     ) {
-        // 背景层
-        Surface(
-            modifier = Modifier.matchParentSize(),
-            shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
-            color = baseColor,
-            shadowElevation = 6.dp
-        ) {
-            // 主题色淡染渐变（从顶部到底部渐弱）
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(
-                        Brush.verticalGradient(
-                            colors = listOf(
-                                primary.copy(alpha = 0.10f),
-                                primary.copy(alpha = 0.02f)
-                            )
-                        )
-                    )
-            )
-        }
-
-        // 内容层
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(vertical = 6.dp, horizontal = 8.dp)
-                .navigationBarsPadding(),
+                .padding(bottom = 4.dp),
             horizontalArrangement = Arrangement.SpaceEvenly,
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -104,8 +80,8 @@ private fun BillBottomNavItem(
     onClick: () -> Unit,
     primaryColor: Color
 ) {
-    val iconTint = if (isSelected) Color.White else primaryColor.copy(alpha = 0.45f)
-    val bgColor = if (isSelected) primaryColor else Color.Transparent
+    val iconTint = if (isSelected) primaryColor else primaryColor.copy(alpha = 0.45f)
+    val bgColor = if (isSelected) primaryColor.copy(alpha = 0.15f) else Color.Transparent
     val scale by animateFloatAsState(if (isSelected) 1.15f else 1.0f, label = "iconScale")
 
     Column(

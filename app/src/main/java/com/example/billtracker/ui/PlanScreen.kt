@@ -24,7 +24,11 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.example.billtracker.ui.components.TagChip
 import com.example.billtracker.data.CustomPlan
 import com.example.billtracker.data.PlanDataType
 import com.example.billtracker.data.displayName
@@ -218,8 +222,7 @@ private fun BalanceCard(
     var isEditing by remember { mutableStateOf(false) }
 
     val isDark = isSystemInDarkTheme()
-    val frostedCardColor = if (isDark) Color(0xFF2A2A2A).copy(alpha = 0.88f) else Color.White.copy(alpha = 0.88f)
-
+    val frostedCardColor = if (isDark) Color(0xFF2A2A2A) else Color.White
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(20.dp),
@@ -338,8 +341,7 @@ fun PlanCard(
     onClick: () -> Unit
 ) {
     val isDark = isSystemInDarkTheme()
-    val frostedCardColor = if (isDark) Color(0xFF2A2A2A).copy(alpha = 0.88f) else Color.White.copy(alpha = 0.88f)
-
+    val frostedCardColor = if (isDark) Color(0xFF2A2A2A) else Color.White
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -527,8 +529,7 @@ fun PlanDetailDialog(
     var noteInput by remember { mutableStateOf(note) }
 
     val isDark = isSystemInDarkTheme()
-    val frostedCardColor = if (isDark) Color(0xFF2A2A2A).copy(alpha = 0.88f) else Color.White.copy(alpha = 0.88f)
-
+    val frostedCardColor = if (isDark) Color(0xFF2A2A2A) else Color.White
     Dialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false)
@@ -667,8 +668,7 @@ fun SavePlanCard(
     }
 
     val isDark = isSystemInDarkTheme()
-    val frostedCardColor = if (isDark) Color(0xFF2A2A2A).copy(alpha = 0.88f) else Color.White.copy(alpha = 0.88f)
-
+    val frostedCardColor = if (isDark) Color(0xFF2A2A2A) else Color.White
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -781,8 +781,7 @@ fun SavePlanDetailDialog(
     var noteInput by remember { mutableStateOf(note) }
 
     val isDark = isSystemInDarkTheme()
-    val frostedCardColor = if (isDark) Color(0xFF2A2A2A).copy(alpha = 0.88f) else Color.White.copy(alpha = 0.88f)
-
+    val frostedCardColor = if (isDark) Color(0xFF2A2A2A) else Color.White
     Dialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false)
@@ -938,15 +937,11 @@ fun AddPlanDialog(
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     allTypes.take(3).forEach { type ->
-                        FilterChip(
+                        TagChip(
                             selected = selectedType == type,
                             onClick = { selectedType = type },
-                            label = { Text(type.displayName(), fontSize = 11.sp) },
-                            modifier = Modifier.weight(1f),
-                            colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
-                                selectedLabelColor = MaterialTheme.colorScheme.primary
-                            )
+                            label = type.displayName(),
+                            modifier = Modifier.weight(1f)
                         )
                     }
                 }
@@ -956,15 +951,11 @@ fun AddPlanDialog(
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     allTypes.drop(3).forEach { type ->
-                        FilterChip(
+                        TagChip(
                             selected = selectedType == type,
                             onClick = { selectedType = type },
-                            label = { Text(type.displayName(), fontSize = 11.sp) },
-                            modifier = Modifier.weight(1f),
-                            colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
-                                selectedLabelColor = MaterialTheme.colorScheme.primary
-                            )
+                            label = type.displayName(),
+                            modifier = Modifier.weight(1f)
                         )
                     }
                 }
@@ -1021,3 +1012,4 @@ fun AddPlanDialog(
         }
     )
 }
+

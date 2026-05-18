@@ -17,3 +17,7 @@ local.properties
 *.hprof
 *.zip
 .github/workflows/release.yml
+scripts/publish_config.json
+scripts/__pycache__/
+.claude/
+.superpowers/

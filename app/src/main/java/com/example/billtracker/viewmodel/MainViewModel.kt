@@ -27,6 +27,7 @@ import com.example.billtracker.data.PlanStorage
 import com.example.billtracker.data.CustomPlan
 import com.example.billtracker.data.PlanDataType
 import com.example.billtracker.data.TransactionSource
+import com.example.billtracker.ui.CustomThemeConfig
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Calendar
@@ -290,6 +291,16 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun setCustomAvatarUri(uri: String) {
         customAvatarUri.value = uri
         planStorage.customAvatarUri = uri
+    }
+
+    // ── 自定义主题 ──
+    val customThemeConfig = MutableStateFlow(
+        CustomThemeConfig.fromJson(planStorage.customThemeConfigJson)
+    )
+
+    fun setCustomThemeConfig(config: CustomThemeConfig) {
+        customThemeConfig.value = config
+        planStorage.customThemeConfigJson = config.toJson()
     }
 
     // ── 清空全部数据 ──

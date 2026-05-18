@@ -1,0 +1,9 @@
+{
+    "lanzou": {
+        "username": "your_lanzou_email@example.com",
+        "password": "your_lanzou_password"
+    },
+    "github": {
+        "token": "ghp_xxxxxxxxxxxxxxxxxxxx"
+    }
+}
