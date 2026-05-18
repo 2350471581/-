@@ -12,8 +12,8 @@ android {
         applicationId = "com.example.billtracker"
         minSdk = 26
         targetSdk = 34
-        versionCode = 4
-        versionName = "1.3"
+        versionCode = 5
+        versionName = "0.5"
     }
 
     signingConfigs {
@@ -80,4 +80,7 @@ dependencies {
     kapt("androidx.room:room-compiler:2.6.1")
 
     implementation("com.google.mlkit:text-recognition-chinese:16.0.0")
+
+    // DeepSeek API
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
 }
