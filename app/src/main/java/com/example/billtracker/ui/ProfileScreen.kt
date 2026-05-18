@@ -25,6 +25,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -38,6 +39,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.example.billtracker.R
+import com.example.billtracker.ui.components.TagChip
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -51,14 +53,14 @@ fun ProfileScreen(
     onCustomAvatarChange: (String) -> Unit,
     onThemeChange: (Int) -> Unit,
     onClearAllData: () -> Unit,
-    onNavigateToAnalysis: () -> Unit,
+    onNavigateToAnalysis: () -> Unit = {},
     onNavigateToImport: () -> Unit = {},
     onExportCsv: (startMillis: Long, endMillis: Long) -> Unit,
     onExportImage: (startMillis: Long, endMillis: Long) -> Unit = { _, _ -> },
     aiChatEnabled: Boolean = false,
     onAiChatToggle: (Boolean) -> Unit = {},
     followSystemTheme: Boolean = false,
-    onFollowSystemThemeChange: (Boolean) -> Unit = {}
+    onFollowSystemThemeChange: (Boolean) -> Unit = {},
 ) {
     var showNicknameDialog by remember { mutableStateOf(false) }
     var showAvatarDialog by remember { mutableStateOf(false) }
@@ -72,6 +74,8 @@ fun ProfileScreen(
     var downloadProgress by remember { mutableIntStateOf(0) }
     var updateError by remember { mutableStateOf("") }
     var downloadedFile by remember { mutableStateOf<java.io.File?>(null) }
+    var showManualDownloadDialog by remember { mutableStateOf(false) }
+    var showManualUpdateDialog by remember { mutableStateOf(false) }
     val updateScope = rememberCoroutineScope()
     val context = LocalContext.current
 
@@ -100,28 +104,45 @@ fun ProfileScreen(
     }
 
     val isDark = isSystemInDarkTheme()
-    val frostedCardColor = if (isDark) Color(0xFF2A2A2A).copy(alpha = 0.88f) else Color.White.copy(alpha = 0.88f)
+    val frostedCardColor = if (isDark) Color(0xFF2A2A2A) else Color.White
+    val primary = MaterialTheme.colorScheme.primary
+    val primaryContainer = MaterialTheme.colorScheme.primaryContainer
 
     Box(modifier = Modifier.fillMaxSize()) {
+        // ── 顶部主题渐变背景 ──
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(180.dp)
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(
+                            primary,
+                            primary.copy(alpha = 0.6f),
+                            primary.copy(alpha = 0f)
+                        )
+                    )
+                )
+        )
+
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .background(MaterialTheme.colorScheme.background)
         ) {
         // ── 头部：头像 + 昵称 ──
         item {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(top = 32.dp, bottom = 20.dp),
+                    .padding(top = 56.dp, bottom = 20.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // 头像
+                // 头像（带主题色描边）
                 Surface(
                     onClick = { showAvatarDialog = true },
                     shape = CircleShape,
-                    color = if (customBitmap != null) Color.Transparent else MaterialTheme.colorScheme.primaryContainer,
-                    modifier = Modifier.size(72.dp)
+                    color = if (customBitmap != null) Color.Transparent else primaryContainer,
+                    modifier = Modifier.size(80.dp)
                 ) {
                     Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
                         if (customBitmap != null) {
@@ -134,7 +155,7 @@ fun ProfileScreen(
                         } else {
                             Text(
                                 text = avatarEmojis.getOrElse(avatarEmoji) { "😀" },
-                                fontSize = 36.sp
+                                fontSize = 40.sp
                             )
                         }
                     }
@@ -147,15 +168,15 @@ fun ProfileScreen(
                 ) {
                     Text(
                         text = nickname,
-                        fontSize = 20.sp,
+                        fontSize = 22.sp,
                         fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onBackground
+                        color = if (isDark) Color.White else primary
                     )
                     Spacer(Modifier.width(6.dp))
                     Icon(
                         Icons.Default.Edit,
                         contentDescription = "编辑昵称",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                        tint = if (isDark) Color.White.copy(alpha = 0.6f) else primary.copy(alpha = 0.6f),
                         modifier = Modifier.size(16.dp)
                     )
                 }
@@ -167,14 +188,19 @@ fun ProfileScreen(
             Card(
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
                 shape = RoundedCornerShape(16.dp),
-                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
                 colors = CardDefaults.cardColors(containerColor = frostedCardColor)
             ) {
-                ProfileMenuItem(Icons.Default.Analytics, "账单分析", { onNavigateToAnalysis() })
-                Divider(modifier = Modifier.padding(horizontal = 16.dp), color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
-                ProfileMenuItem(Icons.Default.Share, "导出账单", { showExportDialog = true })
-                Divider(modifier = Modifier.padding(horizontal = 16.dp), color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
-                ProfileMenuItem(Icons.Default.FileUpload, "导入账单", { onNavigateToImport() })
+                Text(
+                    text = "功能",
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = primary.copy(alpha = 0.8f),
+                    modifier = Modifier.padding(start = 16.dp, top = 14.dp, bottom = 6.dp)
+                )
+                ProfileMenuItem(Icons.Default.Share, "导出账单", { showExportDialog = true }, tint = primary)
+                HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
+                ProfileMenuItem(Icons.Default.FileUpload, "导入账单", { onNavigateToImport() }, tint = primary)
             }
         }
 
@@ -185,19 +211,20 @@ fun ProfileScreen(
             Card(
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
                 shape = RoundedCornerShape(16.dp),
-                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
                 colors = CardDefaults.cardColors(containerColor = frostedCardColor)
             ) {
                 Text(
                     text = "设置",
                     fontSize = 13.sp,
                     fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                    color = primary.copy(alpha = 0.8f),
                     modifier = Modifier.padding(start = 16.dp, top = 14.dp, bottom = 6.dp)
                 )
-                ProfileMenuItem(Icons.Default.Palette, "更换主题", { showThemeDialog = true })
+                ProfileMenuItem(Icons.Default.Palette, "更换主题", { showThemeDialog = true }, tint = primary)
                 Divider(modifier = Modifier.padding(horizontal = 16.dp), color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
                 ProfileMenuItem(Icons.Default.Science, "AI 助手", { onAiChatToggle(!aiChatEnabled) },
+                    tint = primary,
                     trailing = {
                         if (aiChatEnabled) {
                             Box(
@@ -212,9 +239,9 @@ fun ProfileScreen(
                         }
                     })
                 Divider(modifier = Modifier.padding(horizontal = 16.dp), color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
-                ProfileMenuItem(Icons.Default.SystemUpdate, "检查更新", { showUpdateDialog = true })
+                ProfileMenuItem(Icons.Default.SystemUpdate, "检查更新", { showUpdateDialog = true }, tint = primary)
                 Divider(modifier = Modifier.padding(horizontal = 16.dp), color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
-                ProfileMenuItem(Icons.Default.Info, "关于", { showAboutScreen = true })
+                ProfileMenuItem(Icons.Default.Info, "关于", { showAboutScreen = true }, tint = primary)
                 Divider(modifier = Modifier.padding(horizontal = 16.dp), color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
                 ProfileMenuItem(Icons.Default.DeleteForever, "清空全部记录", { showClearConfirm = true },
                     tint = Color(0xFFEA6B5C))
@@ -386,7 +413,11 @@ fun ProfileScreen(
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clickable { onThemeChange(i); showThemeDialog = false }
+                                .clickable {
+                                    if (followSystemTheme) onFollowSystemThemeChange(false)
+                                    onThemeChange(i)
+                                    showThemeDialog = false
+                                }
                                 .padding(vertical = 12.dp, horizontal = 4.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
@@ -446,7 +477,7 @@ fun ProfileScreen(
                     Spacer(Modifier.height(8.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         listOf("全部时间", "最近30天", "自定义").forEachIndexed { i, label ->
-                            FilterChip(
+                            TagChip(
                                 selected = exportTimeRange == i,
                                 onClick = {
                                     exportTimeRange = i
@@ -456,11 +487,7 @@ fun ProfileScreen(
                                         exportStartDate = System.currentTimeMillis() - 30L * 24 * 60 * 60 * 1000
                                     }
                                 },
-                                label = { Text(label, fontSize = 12.sp) },
-                                colors = FilterChipDefaults.filterChipColors(
-                                    selectedContainerColor = MaterialTheme.colorScheme.primary,
-                                    selectedLabelColor = Color.White
-                                )
+                                label = label
                             )
                         }
                     }
@@ -664,28 +691,77 @@ fun ProfileScreen(
                                     )
                                 }
                             }
-                            Spacer(Modifier.height(16.dp))
-                            Button(
-                                onClick = {
-                                    updateState = "downloading"
-                                    updateScope.launch {
-                                        val result = com.example.billtracker.data.AppUpdater.downloadApk(context, info) { pct ->
-                                            downloadProgress = pct
-                                        }
-                                        when (result) {
-                                            is com.example.billtracker.data.DownloadResult.Success -> {
-                                                downloadedFile = result.file
-                                                updateState = "downloaded"
-                                            }
-                                            is com.example.billtracker.data.DownloadResult.Error -> {
-                                                updateError = result.message
-                                                updateState = "error"
-                                            }
-                                        }
+                            Spacer(Modifier.height(8.dp))
+                            // 源测速结果
+                            Column(modifier = Modifier.fillMaxWidth()) {
+                                info.sources.forEach { src ->
+                                    val status = if (src.latencyMs >= 0) "${src.latencyMs}ms" else "不可用"
+                                    val statusColor = when {
+                                        src.latencyMs < 0 -> Color(0xFFEA6B5C)
+                                        src.latencyMs < 500 -> IncomeGreen
+                                        src.latencyMs < 2000 -> Color(0xFFE8824A)
+                                        else -> ExpenseRed
                                     }
-                                },
-                                shape = RoundedCornerShape(10.dp)
-                            ) { Text("下载更新") }
+                                    Row(
+                                        modifier = Modifier.padding(vertical = 1.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text(
+                                            text = src.label,
+                                            fontSize = 11.sp,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                                        )
+                                        Spacer(Modifier.weight(1f))
+                                        Text(
+                                            text = status,
+                                            fontSize = 11.sp,
+                                            fontWeight = FontWeight.Medium,
+                                            color = statusColor
+                                        )
+                                    }
+                                }
+                            }
+                            Spacer(Modifier.height(12.dp))
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                Button(
+                                    onClick = {
+                                        updateState = "downloading"
+                                        updateScope.launch {
+                                            val result = com.example.billtracker.data.AppUpdater.downloadApk(context, info) { pct ->
+                                                downloadProgress = pct
+                                            }
+                                            when (result) {
+                                                is com.example.billtracker.data.DownloadResult.Success -> {
+                                                    downloadedFile = result.file
+                                                    updateState = "downloaded"
+                                                }
+                                                is com.example.billtracker.data.DownloadResult.Error -> {
+                                                    updateError = result.message
+                                                    updateState = "error"
+                                                }
+                                            }
+                                        }
+                                    },
+                                    shape = RoundedCornerShape(10.dp),
+                                    modifier = Modifier.weight(1f)
+                                ) { Text("下载更新") }
+                                OutlinedButton(
+                                    onClick = { showManualUpdateDialog = true },
+                                    shape = RoundedCornerShape(10.dp),
+                                    modifier = Modifier.weight(1f)
+                                ) { Text("手动更新") }
+                            }
+                            if (info.lanzouUrl.isNotBlank()) {
+                                Spacer(Modifier.height(8.dp))
+                                OutlinedButton(
+                                    onClick = { showManualDownloadDialog = true },
+                                    shape = RoundedCornerShape(10.dp),
+                                    modifier = Modifier.fillMaxWidth()
+                                ) { Text("手动下载") }
+                            }
                         }
                         "downloading" -> {
                             Spacer(Modifier.height(12.dp))
@@ -716,14 +792,25 @@ fun ProfileScreen(
                             Spacer(Modifier.height(12.dp))
                             Text("❌", fontSize = 36.sp)
                             Spacer(Modifier.height(8.dp))
-                            Text("检查失败", fontSize = 16.sp, fontWeight = FontWeight.Medium)
+                            Text("更新失败", fontSize = 16.sp, fontWeight = FontWeight.Medium)
                             Spacer(Modifier.height(4.dp))
                             Text(updateError, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             Spacer(Modifier.height(16.dp))
-                            Button(
-                                onClick = { updateState = "" },
-                                shape = RoundedCornerShape(10.dp)
-                            ) { Text("重试") }
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                Button(
+                                    onClick = { updateState = "" },
+                                    shape = RoundedCornerShape(10.dp),
+                                    modifier = Modifier.weight(1f)
+                                ) { Text("重试") }
+                                OutlinedButton(
+                                    onClick = { showManualUpdateDialog = true },
+                                    shape = RoundedCornerShape(10.dp),
+                                    modifier = Modifier.weight(1f)
+                                ) { Text("手动更新") }
+                            }
                         }
                     }
                 }
@@ -741,6 +828,29 @@ fun ProfileScreen(
                     Text(if (updateState == "downloading") "下载中..." else "关闭", color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
+        )
+    }
+
+    // ── 手动下载弹窗（蓝奏云） ──
+    if (showManualDownloadDialog) {
+        val lanzouUrl = updateInfo?.lanzouUrl ?: ""
+        val lanzouPassword = updateInfo?.lanzouPassword ?: ""
+        ManualDownloadDialog(
+            url = lanzouUrl,
+            password = lanzouPassword,
+            onDismiss = { showManualDownloadDialog = false }
+        )
+    }
+
+    // ── 手动更新弹窗（显示所有源 + 蓝奏云） ──
+    if (showManualUpdateDialog) {
+        val info = updateInfo
+        ManualUpdateDialog(
+            sources = info?.sources ?: emptyList(),
+            lanzouUrl = info?.lanzouUrl ?: "",
+            lanzouPassword = info?.lanzouPassword ?: "",
+            versionName = info?.versionName ?: "",
+            onDismiss = { showManualUpdateDialog = false }
         )
     }
 }
@@ -770,6 +880,266 @@ private fun ProfileMenuItem(
             Icon(Icons.Default.ChevronRight, contentDescription = null, tint = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f), modifier = Modifier.size(20.dp))
         }
     }
+}
+
+// ── 手动下载弹窗 ──
+@Composable
+private fun ManualDownloadDialog(
+    url: String,
+    password: String,
+    onDismiss: () -> Unit
+) {
+    val context = LocalContext.current
+    var copiedLabel by remember { mutableStateOf("") }
+
+    fun copyToClipboard(text: String, label: String) {
+        val clipboard = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+        clipboard.setPrimaryClip(android.content.ClipData.newPlainText("lanzou", text))
+        copiedLabel = label
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        shape = RoundedCornerShape(20.dp),
+        title = {
+            Text("手动下载", fontWeight = FontWeight.Bold, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
+        },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                // 下载链接
+                Text("下载链接", fontSize = 13.sp, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Surface(
+                    onClick = { copyToClipboard(url, "链接已复制") },
+                    shape = RoundedCornerShape(10.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier.padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = url.ifEmpty { "暂无" },
+                            fontSize = 13.sp,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.weight(1f),
+                            maxLines = 2
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Icon(
+                            Icons.Default.ContentCopy,
+                            contentDescription = "复制",
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                }
+
+                // 密码
+                Text("提取密码", fontSize = 13.sp, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Surface(
+                    onClick = { copyToClipboard(password, "密码已复制") },
+                    shape = RoundedCornerShape(10.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier.padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = password.ifEmpty { "无密码" },
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.weight(1f)
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Icon(
+                            Icons.Default.ContentCopy,
+                            contentDescription = "复制",
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                }
+
+                // 复制提示
+                if (copiedLabel.isNotEmpty()) {
+                    Text(
+                        text = copiedLabel,
+                        fontSize = 12.sp,
+                        color = IncomeGreen,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+
+                Text(
+                    text = "在浏览器中打开链接，输入提取密码即可下载 APK 手动安装。",
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("关闭", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+    )
+}
+
+// ── 手动更新弹窗（显示所有下载源 + 蓝奏云） ──
+@Composable
+private fun ManualUpdateDialog(
+    sources: List<com.example.billtracker.data.UpdateSource>,
+    lanzouUrl: String,
+    lanzouPassword: String,
+    versionName: String,
+    onDismiss: () -> Unit
+) {
+    val context = LocalContext.current
+    var copiedLabel by remember { mutableStateOf("") }
+
+    fun copyToClipboard(text: String, label: String) {
+        val clipboard = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+        clipboard.setPrimaryClip(android.content.ClipData.newPlainText("update_url", text))
+        copiedLabel = label
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        shape = RoundedCornerShape(20.dp),
+        title = {
+            Text("手动更新 v$versionName", fontWeight = FontWeight.Bold, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
+        },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                // 直接下载源
+                if (sources.isNotEmpty()) {
+                    Text("下载源", fontSize = 13.sp, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    sources.forEach { src ->
+                        Surface(
+                            onClick = { copyToClipboard(src.url, "已复制 ${src.label}") },
+                            shape = RoundedCornerShape(10.dp),
+                            color = MaterialTheme.colorScheme.surfaceVariant,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(10.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = src.label,
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Medium,
+                                        color = MaterialTheme.colorScheme.primary
+                                    )
+                                    Text(
+                                        text = src.url,
+                                        fontSize = 11.sp,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                                        maxLines = 2
+                                    )
+                                }
+                                Spacer(Modifier.width(8.dp))
+                                Icon(
+                                    Icons.Default.ContentCopy,
+                                    contentDescription = "复制",
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+
+                // 蓝奏云链接
+                if (lanzouUrl.isNotBlank()) {
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
+                    Text("蓝奏云下载", fontSize = 13.sp, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+
+                    Surface(
+                        onClick = { copyToClipboard(lanzouUrl, "蓝奏云链接已复制") },
+                        shape = RoundedCornerShape(10.dp),
+                        color = MaterialTheme.colorScheme.surfaceVariant,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(10.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = lanzouUrl,
+                                fontSize = 12.sp,
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.weight(1f),
+                                maxLines = 2
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            Icon(
+                                Icons.Default.ContentCopy,
+                                contentDescription = "复制",
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                    }
+
+                    if (lanzouPassword.isNotBlank()) {
+                        Surface(
+                            onClick = { copyToClipboard(lanzouPassword, "蓝奏云密码已复制") },
+                            shape = RoundedCornerShape(10.dp),
+                            color = MaterialTheme.colorScheme.surfaceVariant,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(10.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text("密码: ", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text(
+                                    text = lanzouPassword,
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Spacer(Modifier.weight(1f))
+                                Icon(
+                                    Icons.Default.ContentCopy,
+                                    contentDescription = "复制",
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+
+                // 复制提示
+                if (copiedLabel.isNotEmpty()) {
+                    Text(
+                        text = copiedLabel,
+                        fontSize = 12.sp,
+                        color = IncomeGreen,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+
+                Text(
+                    text = "复制链接后在浏览器中打开，下载 APK 手动安装即可完成更新。",
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("关闭", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+    )
 }
 
 // ── 关于页面 ──
@@ -827,8 +1197,7 @@ private fun AboutScreen(onBack: () -> Unit) {
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(16.dp),
                     colors = CardDefaults.cardColors(
-                        containerColor = if (isDark) Color(0xFF2A2A2A).copy(alpha = 0.88f) else Color.White.copy(alpha = 0.88f)
-                    ),
+                        containerColor = if (isDark) Color(0xFF2A2A2A).copy(alpha = 0.88f) else Color.White                    ),
                     elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
                 ) {
                     Column(modifier = Modifier.padding(20.dp)) {
@@ -866,8 +1235,7 @@ private fun AboutScreen(onBack: () -> Unit) {
                         .clickable { showIntroDialog = true },
                     shape = RoundedCornerShape(16.dp),
                     colors = CardDefaults.cardColors(
-                        containerColor = if (isDark) Color(0xFF2A2A2A).copy(alpha = 0.88f) else Color.White.copy(alpha = 0.88f)
-                    ),
+                        containerColor = if (isDark) Color(0xFF2A2A2A).copy(alpha = 0.88f) else Color.White                    ),
                     elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
                 ) {
                     Row(
@@ -908,8 +1276,7 @@ private fun AboutScreen(onBack: () -> Unit) {
                         .clickable { showDonateDialog = true },
                     shape = RoundedCornerShape(16.dp),
                     colors = CardDefaults.cardColors(
-                        containerColor = if (isDark) Color(0xFF2A2A2A).copy(alpha = 0.88f) else Color.White.copy(alpha = 0.88f)
-                    ),
+                        containerColor = if (isDark) Color(0xFF2A2A2A).copy(alpha = 0.88f) else Color.White                    ),
                     elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
                 ) {
                     Row(
