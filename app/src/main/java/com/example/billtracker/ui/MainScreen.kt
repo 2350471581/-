@@ -89,7 +89,6 @@ fun MainScreen(viewModel: MainViewModel = viewModel()) {
     val scope = rememberCoroutineScope()
     val pagerState = rememberPagerState(pageCount = { 2 })
     var selectedBottomTab by remember { mutableIntStateOf(0) }
-    var showAnalysis by remember { mutableStateOf(false) }
     var showAIChat by remember { mutableStateOf(false) }
     var showImport by remember { mutableStateOf(false) }
     var showAIChatTutorial by remember { mutableStateOf(false) }
@@ -151,7 +150,7 @@ fun MainScreen(viewModel: MainViewModel = viewModel()) {
     }
 
     // ── 双击返回键退出 ──
-    val isInSubScreen = showAIChat || showAnalysis || showAIChatTutorial || showAiChatProfileTutorial
+    val isInSubScreen = showAIChat || showAIChatTutorial || showAiChatProfileTutorial
     val isDialogOpen = showAddDialog || showAddPlanDialog || showDateFilterDialog || detailTransaction != null || showManualPlanAlert
     BackHandler(enabled = !isInSubScreen && !isDialogOpen) {
         val now = System.currentTimeMillis()
@@ -176,7 +175,7 @@ fun MainScreen(viewModel: MainViewModel = viewModel()) {
         },
         topBar = {},
         floatingActionButton = {
-            if (!showAIChat && !showAIChatTutorial && !showAnalysis) {
+            if (!showAIChat && !showAIChatTutorial && selectedBottomTab != 2) {
             when (selectedBottomTab) {
                 0 -> {
                     Column(
@@ -229,9 +228,7 @@ fun MainScreen(viewModel: MainViewModel = viewModel()) {
                     .fillMaxSize()
                     .padding(padding)
             ) {
-            if (showAnalysis) {
-                AnalysisScreen(viewModel = viewModel, onBack = { showAnalysis = false })
-            } else if (showAIChat) {
+            if (showAIChat) {
                 AIChatScreen(
                     onBack = { showAIChat = false },
                     onAddTransaction = { amount, type, desc ->
@@ -319,22 +316,51 @@ fun MainScreen(viewModel: MainViewModel = viewModel()) {
                     onRefresh = { viewModel.refreshFromSms() }
                 )
 
-                // ── TabRow ──
-                TabRow(
-                    selectedTabIndex = pagerState.currentPage,
-                    containerColor = CardBg(),
-                    contentColor = MaterialTheme.colorScheme.primary
+                // ── 自定义圆角 Tab ──
+                val selectedColor = MaterialTheme.colorScheme.primary
+                val unselectedColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 6.dp),
+                    horizontalArrangement = Arrangement.Center
                 ) {
-                    Tab(
-                        selected = pagerState.currentPage == 0,
+                    Surface(
                         onClick = { scope.launch { pagerState.animateScrollToPage(0) } },
-                        text = { Text("今日明细", fontWeight = if (pagerState.currentPage == 0) FontWeight.SemiBold else FontWeight.Normal) }
-                    )
-                    Tab(
-                        selected = pagerState.currentPage == 1,
+                        shape = RoundedCornerShape(
+                            topStart = 12.dp, bottomStart = 12.dp,
+                            topEnd = 0.dp, bottomEnd = 0.dp
+                        ),
+                        color = if (pagerState.currentPage == 0) selectedColor else CardBg(),
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text(
+                            text = "今日明细",
+                            fontWeight = if (pagerState.currentPage == 0) FontWeight.SemiBold else FontWeight.Normal,
+                            color = if (pagerState.currentPage == 0) Color.White else unselectedColor,
+                            modifier = Modifier.padding(vertical = 10.dp).fillMaxWidth(),
+                            textAlign = TextAlign.Center,
+                            fontSize = 14.sp
+                        )
+                    }
+                    Surface(
                         onClick = { scope.launch { pagerState.animateScrollToPage(1) } },
-                        text = { Text("全部记录", fontWeight = if (pagerState.currentPage == 1) FontWeight.SemiBold else FontWeight.Normal) }
-                    )
+                        shape = RoundedCornerShape(
+                            topStart = 0.dp, bottomStart = 0.dp,
+                            topEnd = 12.dp, bottomEnd = 12.dp
+                        ),
+                        color = if (pagerState.currentPage == 1) selectedColor else CardBg(),
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text(
+                            text = "全部记录",
+                            fontWeight = if (pagerState.currentPage == 1) FontWeight.SemiBold else FontWeight.Normal,
+                            color = if (pagerState.currentPage == 1) Color.White else unselectedColor,
+                            modifier = Modifier.padding(vertical = 10.dp).fillMaxWidth(),
+                            textAlign = TextAlign.Center,
+                            fontSize = 14.sp
+                        )
+                    }
                 }
 
                 // ── 页面内容 ──
@@ -408,6 +434,9 @@ fun MainScreen(viewModel: MainViewModel = viewModel()) {
                     onDeleteCustomPlan = { index -> viewModel.deleteCustomPlan(index) }
                 )
             } else if (selectedBottomTab == 2) {
+                // ── 账单分析 ──
+                AnalysisScreen(viewModel = viewModel)
+            } else if (selectedBottomTab == 3) {
                 // ── 我的页面 ──
                 val nick by viewModel.nickname.collectAsStateWithLifecycle()
                 val avatar by viewModel.avatarEmoji.collectAsStateWithLifecycle()
@@ -428,7 +457,7 @@ fun MainScreen(viewModel: MainViewModel = viewModel()) {
                         viewModel.clearAllData()
                         scope.launch { snackbarHostState.showSnackbar("已清空全部记录") }
                     },
-                    onNavigateToAnalysis = { showAnalysis = true },
+                    onNavigateToAnalysis = { selectedBottomTab = 2 },
                     onNavigateToImport = { showImport = true },
                     aiChatEnabled = aiChatEnabled,
                     onAiChatToggle = { enabled ->
@@ -1032,7 +1061,7 @@ fun TransactionItem(
                 .fillMaxWidth(),
             shape = RoundedCornerShape(14.dp),
             elevation = CardDefaults.cardElevation(defaultElevation = 0.5.dp),
-            colors = CardDefaults.cardColors(containerColor = CardBg())
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
         ) {
             Row(
                 modifier = Modifier
