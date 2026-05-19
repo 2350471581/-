@@ -49,6 +49,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
@@ -77,6 +80,11 @@ import com.example.billtracker.ui.components.DateRangeFilterDialog
 import com.example.billtracker.ui.ImportScreen
 import com.example.billtracker.ui.components.BillTrackerBottomBar
 import com.example.billtracker.ui.components.TransactionCard
+import com.example.billtracker.ui.components.TransactionDetailCard
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.navigation.compose.rememberNavController
 import com.example.billtracker.viewmodel.LedgerViewModel
 import com.example.billtracker.viewmodel.PlanViewModel
 import com.example.billtracker.viewmodel.AnalysisViewModel
@@ -111,7 +119,17 @@ fun MainScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val pagerState = rememberPagerState(pageCount = { 2 })
-    var selectedBottomTab by remember { mutableIntStateOf(0) }
+    val navController = rememberNavController()
+    val navBackStackEntry by navController.currentBackStackEntryAsState()
+    val currentRoute = navBackStackEntry?.destination?.route
+    val tabForRoute: (String?) -> Int = { route ->
+        when (route) {
+            MainRoute.PLAN -> 1
+            MainRoute.ANALYSIS -> 2
+            MainRoute.PROFILE -> 3
+            else -> 0
+        }
+    }
     var showAIChat by remember { mutableStateOf(false) }
     var showImport by remember { mutableStateOf(false) }
     var showAIChatTutorial by remember { mutableStateOf(false) }
@@ -186,16 +204,22 @@ fun MainScreen(
         }
     }
 
-    // ── 双击返回键退出 ──
-    val isInSubScreen = showAIChat || showAIChatTutorial || showAiChatProfileTutorial || showSearch
+    // ── 双击返回键退出 / 导航回首页 ──
     val isDialogOpen = showAddDialog || showAddPlanDialog || showDateFilterDialog || detailTransaction != null || showManualPlanAlert || showBackupDialog
-    BackHandler(enabled = !isInSubScreen && !isDialogOpen) {
-        val now = System.currentTimeMillis()
-        if (now - lastBackTime < 2000) {
-            (context as? Activity)?.finish()
+    BackHandler(enabled = !isDialogOpen && !showAIChat && !showAIChatTutorial && !showAiChatProfileTutorial && !showSearch) {
+        if (currentRoute != MainRoute.LEDGER && currentRoute != null) {
+            navController.navigate(MainRoute.LEDGER) {
+                popUpTo(MainRoute.LEDGER) { inclusive = true }
+                launchSingleTop = true
+            }
         } else {
-            lastBackTime = now
-            Toast.makeText(context, "再滑一次退出", Toast.LENGTH_SHORT).show()
+            val now = System.currentTimeMillis()
+            if (now - lastBackTime < 2000) {
+                (context as? Activity)?.finish()
+            } else {
+                lastBackTime = now
+                Toast.makeText(context, "再滑一次退出", Toast.LENGTH_SHORT).show()
+            }
         }
     }
 
@@ -212,9 +236,9 @@ fun MainScreen(
         },
         topBar = {},
         floatingActionButton = {
-            if (!showAIChat && !showAIChatTutorial && selectedBottomTab != 2 && !showImport && !showSearch) {
-            when (selectedBottomTab) {
-                0 -> {
+            if (!showAIChat && !showAIChatTutorial && !showImport && !showSearch) {
+            when (currentRoute) {
+                MainRoute.LEDGER -> {
                     Column(
                         horizontalAlignment = Alignment.End,
                         verticalArrangement = Arrangement.spacedBy(12.dp)
@@ -234,7 +258,7 @@ fun MainScreen(
                         }
                     }
                 }
-                1 -> {
+                MainRoute.PLAN -> {
                     SmallFloatingActionButton(
                         onClick = { showAddPlanDialog = true },
                         containerColor = MaterialTheme.colorScheme.primary,
@@ -250,8 +274,20 @@ fun MainScreen(
         bottomBar = {
             if (!showAIChat && !showImport && !showSearch) {
                 BillTrackerBottomBar(
-                    selectedTab = selectedBottomTab,
-                    onTabSelected = { selectedBottomTab = it }
+                    selectedTab = tabForRoute(currentRoute),
+                    onTabSelected = { index ->
+                        val route = when (index) {
+                            1 -> MainRoute.PLAN
+                            2 -> MainRoute.ANALYSIS
+                            3 -> MainRoute.PROFILE
+                            else -> MainRoute.LEDGER
+                        }
+                        navController.navigate(route) {
+                            popUpTo(MainRoute.LEDGER) { saveState = true }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
+                    }
                 )
             }
         }
@@ -281,273 +317,284 @@ fun MainScreen(
                 )
             } else if (showSearch) {
                 SearchScreen(onBack = { showSearch = false }, allTransactions = allTransactions)
-            } else if (selectedBottomTab == 0) {
-                // ── 权限提示条（仅在自动模式下显示） ──
-                if (!hasPermission && !isManualMode) {
-                    Surface(
-                        modifier = Modifier.fillMaxWidth(),
-                        color = Color(0xFFFFF8E1),
-                        shadowElevation = 1.dp
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = "需要短信权限读取微信/支付宝账单",
-                                fontSize = 13.sp,
-                                color = Color(0xFFE65100),
-                                modifier = Modifier.weight(1f)
-                            )
-                            TextButton(onClick = { permissionLauncher.launch(Manifest.permission.READ_SMS) }) {
-                                Text("授予权限", fontSize = 13.sp, color = Color(0xFFE65100), fontWeight = FontWeight.SemiBold)
-                            }
-                        }
-                    }
-                }
-
-                // ── 通知监听权限提示（自动模式下 + 已开启短信权限但未开通知权限） ──
-                if (!isManualMode && hasPermission && !hasNotificationPermission) {
-                    Surface(
-                        modifier = Modifier.fillMaxWidth(),
-                        color = Color(0xFFE8F0FE),
-                        shadowElevation = 1.dp
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = "开启通知监听可自动读取微信/支付宝支付通知",
-                                fontSize = 13.sp,
-                                color = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.weight(1f)
-                            )
-                            TextButton(onClick = { ledgerViewModel.openNotificationSettings() }) {
-                                Text("去开启", fontSize = 13.sp, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
-                            }
-                        }
-                    }
-                }
-
-                // ── 微信风格余额卡片 ──
-                val isAllPage = pagerState.currentPage == 1
-                val installDate = ledgerViewModel.installDateMillis
-                val totalIncome by remember {
-                    derivedStateOf {
-                        allTransactions.filter { it.type == TransactionType.INCOME && it.dateMillis >= installDate }
-                            .sumOf { it.amount }
-                    }
-                }
-                val totalExpense by remember {
-                    derivedStateOf {
-                        allTransactions.filter { it.type == TransactionType.EXPENSE && it.dateMillis >= installDate }
-                            .sumOf { it.amount }
-                    }
-                }
-                WeChatStyleBalanceCard(
-                    income = if (isAllPage) totalIncome else todayIncome,
-                    expense = if (isAllPage) totalExpense else todayExpense,
-                    title = if (isAllPage) "总净收入" else "今日净收入",
-                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 6.dp),
-                    isManualMode = isManualMode,
-                    onToggleMode = onToggleMode,
-                    onDateFilterClick = { showDateFilterDialog = true },
-                    onRefresh = { ledgerViewModel.refreshFromSms() },
-                    onSearchClick = { showSearch = true }
-                )
-
-                // ── 自定义圆角 Tab ──
-                val selectedColor = MaterialTheme.colorScheme.primary
-                val unselectedColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 6.dp),
-                    horizontalArrangement = Arrangement.Center
+            } else {
+                NavHost(
+                    navController = navController,
+                    startDestination = MainRoute.LEDGER,
+                    modifier = Modifier.fillMaxSize()
                 ) {
-                    Surface(
-                        onClick = { scope.launch { pagerState.animateScrollToPage(0) } },
-                        shape = RoundedCornerShape(
-                            topStart = 12.dp, bottomStart = 12.dp,
-                            topEnd = 0.dp, bottomEnd = 0.dp
-                        ),
-                        color = if (pagerState.currentPage == 0) selectedColor else CardBg(),
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Text(
-                            text = "今日明细",
-                            fontWeight = if (pagerState.currentPage == 0) FontWeight.SemiBold else FontWeight.Normal,
-                            color = if (pagerState.currentPage == 0) Color.White else unselectedColor,
-                            modifier = Modifier.padding(vertical = 10.dp).fillMaxWidth(),
-                            textAlign = TextAlign.Center,
-                            fontSize = 14.sp
-                        )
-                    }
-                    Surface(
-                        onClick = { scope.launch { pagerState.animateScrollToPage(1) } },
-                        shape = RoundedCornerShape(
-                            topStart = 0.dp, bottomStart = 0.dp,
-                            topEnd = 12.dp, bottomEnd = 12.dp
-                        ),
-                        color = if (pagerState.currentPage == 1) selectedColor else CardBg(),
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Text(
-                            text = "全部记录",
-                            fontWeight = if (pagerState.currentPage == 1) FontWeight.SemiBold else FontWeight.Normal,
-                            color = if (pagerState.currentPage == 1) Color.White else unselectedColor,
-                            modifier = Modifier.padding(vertical = 10.dp).fillMaxWidth(),
-                            textAlign = TextAlign.Center,
-                            fontSize = 14.sp
-                        )
-                    }
-                }
-
-                // ── 页面内容 ──
-                HorizontalPager(
-                    state = pagerState,
-                    modifier = Modifier.weight(1f)
-                ) { page ->
-                    val deleteCallback: (Long) -> Unit = { id ->
-                        ledgerViewModel.deleteTransaction(id)
-                        scope.launch { snackbarHostState.showSnackbar("已删除") }
-                    }
-                    val detailCallback: (TransactionEntity) -> Unit = { tx ->
-                        detailTransaction = tx
-                    }
-
-                    when (page) {
-                        0 -> TransactionList(
-                            transactions = todayTransactions,
-                            emptyText = "未收取到数据",
-                            onDelete = deleteCallback,
-                            onItemClick = detailCallback
-                        )
-                        1 -> TransactionList(
-                                transactions = recentTransactions,
-                                emptyText = "暂无记录",
-                                onDelete = deleteCallback,
-                                onItemClick = detailCallback,
-                                modifier = Modifier.fillMaxSize()
-                            )
-                    }
-                }
-
-                // ── 隐私声明底部 ──
-                PrivacyFooter()
-            } else if (selectedBottomTab == 1) {
-                // ── 计划页面 ──
-                val installDate = ledgerViewModel.installDateMillis
-                val totalIncomeAll by remember {
-                    derivedStateOf {
-                        allTransactions.filter { it.type == TransactionType.INCOME && it.dateMillis >= installDate }
-                            .sumOf { it.amount }
-                    }
-                }
-                val totalExpenseAll by remember {
-                    derivedStateOf {
-                        allTransactions.filter { it.type == TransactionType.EXPENSE && it.dateMillis >= installDate }
-                            .sumOf { it.amount }
-                    }
-                }
-                PlanScreen(
-                    todayIncome = todayIncome,
-                    todayExpense = todayExpense,
-                    totalIncome = totalIncomeAll,
-                    totalExpense = totalExpenseAll,
-                    planBalance = planViewModel.planBalance.collectAsStateWithLifecycle().value,
-                    todayPlanTarget = planViewModel.todayPlanTarget.collectAsStateWithLifecycle().value,
-                    totalPlanTarget = planViewModel.totalPlanTarget.collectAsStateWithLifecycle().value,
-                    savePlanTarget = planViewModel.savePlanTarget.collectAsStateWithLifecycle().value,
-                    todayPlanNote = planViewModel.todayPlanNote.collectAsStateWithLifecycle().value,
-                    totalPlanNote = planViewModel.totalPlanNote.collectAsStateWithLifecycle().value,
-                    savePlanNote = planViewModel.savePlanNote.collectAsStateWithLifecycle().value,
-                    customPlans = planViewModel.customPlans.collectAsStateWithLifecycle().value,
-                    onBalanceChange = { planViewModel.updatePlanBalance(it) },
-                    onTodayPlanTargetSave = { planViewModel.updateTodayPlanTarget(it) },
-                    onTotalPlanTargetSave = { planViewModel.updateTotalPlanTarget(it) },
-                    onSavePlanTargetSave = { planViewModel.updateSavePlanTarget(it) },
-                    onTodayPlanNoteSave = { planViewModel.updateTodayPlanNote(it) },
-                    onTotalPlanNoteSave = { planViewModel.updateTotalPlanNote(it) },
-                    onSavePlanNoteSave = { planViewModel.updateSavePlanNote(it) },
-                    onUpdateCustomPlan = { index, target, note -> planViewModel.updateCustomPlan(index, target, note) },
-                    onDeleteCustomPlan = { index -> planViewModel.deleteCustomPlan(index) }
-                )
-            } else if (selectedBottomTab == 2) {
-                // ── 账单分析 ──
-                AnalysisScreen(viewModel = analysisViewModel)
-            } else if (selectedBottomTab == 3) {
-                // ── 我的页面 ──
-                val nick by profileViewModel.nickname.collectAsStateWithLifecycle()
-                val avatar by profileViewModel.avatarEmoji.collectAsStateWithLifecycle()
-                val customUri by profileViewModel.customAvatarUri.collectAsStateWithLifecycle()
-                ProfileScreen(
-                    nickname = nick,
-                    avatarEmoji = avatar,
-                    customAvatarUri = customUri,
-                    themeIndex = themeIdx,
-                    onNicknameChange = { profileViewModel.setNickname(it) },
-                    onAvatarChange = { profileViewModel.setAvatarEmoji(it) },
-                    onCustomAvatarChange = { profileViewModel.setCustomAvatarUri(it) },
-                    onThemeChange = {
-                        profileViewModel.setThemeIndex(it)
-                        scope.launch { snackbarHostState.showSnackbar("主题已切换") }
-                    },
-                    onClearAllData = {
-                        profileViewModel.clearAllData()
-                        scope.launch { snackbarHostState.showSnackbar("已清空全部记录") }
-                    },
-
-
-                    onNavigateToImport = { showImport = true },
-                    aiChatEnabled = aiChatEnabled,
-                    onAiChatToggle = { enabled ->
-                        profileViewModel.setAiChatEnabled(enabled)
-                        if (enabled) showAiChatProfileTutorial = true
-                    },
-                    followSystemTheme = profileViewModel.followSystemTheme.collectAsStateWithLifecycle().value,
-                    onFollowSystemThemeChange = { profileViewModel.setFollowSystemTheme(it) },
-                    customThemeConfig = customThemeCfg,
-                    onCustomThemeChange = { profileViewModel.setCustomThemeConfig(it) },
-                    onExportCsv = { start, end ->
-                        scope.launch {
-                            val uri = profileViewModel.exportCsv(
-                                if (start > 0) start else 0L,
-                                if (end > 0) end else System.currentTimeMillis()
-                            )
-                            if (uri != null) {
-                                val intent = Intent(Intent.ACTION_SEND).apply {
-                                    type = "text/csv"
-                                    putExtra(Intent.EXTRA_STREAM, uri)
-                                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    composable(MainRoute.LEDGER) {
+                        // ── 权限提示条（仅在自动模式下显示） ──
+                        if (!hasPermission && !isManualMode) {
+                            Surface(
+                                modifier = Modifier.fillMaxWidth(),
+                                color = Color(0xFFFFF8E1),
+                                shadowElevation = 1.dp
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = "需要短信权限读取微信/支付宝账单",
+                                        fontSize = 13.sp,
+                                        color = Color(0xFFE65100),
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                    TextButton(onClick = { permissionLauncher.launch(Manifest.permission.READ_SMS) }) {
+                                        Text("授予权限", fontSize = 13.sp, color = Color(0xFFE65100), fontWeight = FontWeight.SemiBold)
+                                    }
                                 }
-                                context.startActivity(Intent.createChooser(intent, "导出表格"))
-                            } else {
-                                snackbarHostState.showSnackbar("导出失败")
                             }
                         }
-                    },
-                    onExportImage = { start, end ->
-                        scope.launch {
-                            val uri = profileViewModel.exportImage(
-                                if (start > 0) start else 0L,
-                                if (end > 0) end else System.currentTimeMillis()
-                            )
-                            if (uri != null) {
-                                val intent = Intent(Intent.ACTION_SEND).apply {
-                                    type = "image/png"
-                                    putExtra(Intent.EXTRA_STREAM, uri)
-                                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+
+                        // ── 通知监听权限提示（自动模式下 + 已开启短信权限但未开通知权限） ──
+                        if (!isManualMode && hasPermission && !hasNotificationPermission) {
+                            Surface(
+                                modifier = Modifier.fillMaxWidth(),
+                                color = Color(0xFFE8F0FE),
+                                shadowElevation = 1.dp
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = "开启通知监听可自动读取微信/支付宝支付通知",
+                                        fontSize = 13.sp,
+                                        color = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                    TextButton(onClick = { ledgerViewModel.openNotificationSettings() }) {
+                                        Text("去开启", fontSize = 13.sp, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
+                                    }
                                 }
-                                context.startActivity(Intent.createChooser(intent, "导出图片"))
-                            } else {
-                                snackbarHostState.showSnackbar("导出图片失败")
                             }
                         }
-                    },
-                    onBackupRestore = { showBackupDialog = true }
-                )
+
+                        // ── 微信风格余额卡片 ──
+                        val isAllPage = pagerState.currentPage == 1
+                        val installDate = ledgerViewModel.installDateMillis
+                        val totalIncome by remember {
+                            derivedStateOf {
+                                allTransactions.filter { it.type == TransactionType.INCOME && it.dateMillis >= installDate }
+                                    .sumOf { it.amount }
+                            }
+                        }
+                        val totalExpense by remember {
+                            derivedStateOf {
+                                allTransactions.filter { it.type == TransactionType.EXPENSE && it.dateMillis >= installDate }
+                                    .sumOf { it.amount }
+                            }
+                        }
+                        WeChatStyleBalanceCard(
+                            income = if (isAllPage) totalIncome else todayIncome,
+                            expense = if (isAllPage) totalExpense else todayExpense,
+                            title = if (isAllPage) "总净收入" else "今日净收入",
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 6.dp),
+                            isManualMode = isManualMode,
+                            onToggleMode = onToggleMode,
+                            onDateFilterClick = { showDateFilterDialog = true },
+                            onRefresh = { ledgerViewModel.refreshFromSms() },
+                            onSearchClick = { showSearch = true }
+                        )
+
+                        // ── 自定义圆角 Tab ──
+                        val selectedColor = MaterialTheme.colorScheme.primary
+                        val unselectedColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 6.dp),
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            Surface(
+                                onClick = { scope.launch { pagerState.animateScrollToPage(0) } },
+                                shape = RoundedCornerShape(
+                                    topStart = 12.dp, bottomStart = 12.dp,
+                                    topEnd = 0.dp, bottomEnd = 0.dp
+                                ),
+                                color = if (pagerState.currentPage == 0) selectedColor else CardBg(),
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Text(
+                                    text = "今日明细",
+                                    fontWeight = if (pagerState.currentPage == 0) FontWeight.SemiBold else FontWeight.Normal,
+                                    color = if (pagerState.currentPage == 0) Color.White else unselectedColor,
+                                    modifier = Modifier.padding(vertical = 10.dp).fillMaxWidth(),
+                                    textAlign = TextAlign.Center,
+                                    fontSize = 14.sp
+                                )
+                            }
+                            Surface(
+                                onClick = { scope.launch { pagerState.animateScrollToPage(1) } },
+                                shape = RoundedCornerShape(
+                                    topStart = 0.dp, bottomStart = 0.dp,
+                                    topEnd = 12.dp, bottomEnd = 12.dp
+                                ),
+                                color = if (pagerState.currentPage == 1) selectedColor else CardBg(),
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Text(
+                                    text = "全部记录",
+                                    fontWeight = if (pagerState.currentPage == 1) FontWeight.SemiBold else FontWeight.Normal,
+                                    color = if (pagerState.currentPage == 1) Color.White else unselectedColor,
+                                    modifier = Modifier.padding(vertical = 10.dp).fillMaxWidth(),
+                                    textAlign = TextAlign.Center,
+                                    fontSize = 14.sp
+                                )
+                            }
+                        }
+
+                        // ── 页面内容 ──
+                        HorizontalPager(
+                            state = pagerState,
+                            modifier = Modifier.weight(1f)
+                        ) { page ->
+                            val deleteCallback: (Long) -> Unit = { id ->
+                                ledgerViewModel.deleteTransaction(id)
+                                scope.launch { snackbarHostState.showSnackbar("已删除") }
+                            }
+                            val detailCallback: (TransactionEntity) -> Unit = { tx ->
+                                detailTransaction = tx
+                            }
+
+                            when (page) {
+                                0 -> TransactionList(
+                                    transactions = todayTransactions,
+                                    emptyText = "未收取到数据",
+                                    onDelete = deleteCallback,
+                                    onItemClick = detailCallback
+                                )
+                                1 -> TransactionList(
+                                        transactions = recentTransactions,
+                                        emptyText = "暂无记录",
+                                        onDelete = deleteCallback,
+                                        onItemClick = detailCallback,
+                                        modifier = Modifier.fillMaxSize()
+                                    )
+                            }
+                        }
+
+                        // ── 隐私声明底部 ──
+                        PrivacyFooter()
+                    }
+                    composable(MainRoute.PLAN) {
+                        // ── 计划页面 ──
+                        val installDate = ledgerViewModel.installDateMillis
+                        val totalIncomeAll by remember {
+                            derivedStateOf {
+                                allTransactions.filter { it.type == TransactionType.INCOME && it.dateMillis >= installDate }
+                                    .sumOf { it.amount }
+                            }
+                        }
+                        val totalExpenseAll by remember {
+                            derivedStateOf {
+                                allTransactions.filter { it.type == TransactionType.EXPENSE && it.dateMillis >= installDate }
+                                    .sumOf { it.amount }
+                            }
+                        }
+                        PlanScreen(
+                            todayIncome = todayIncome,
+                            todayExpense = todayExpense,
+                            totalIncome = totalIncomeAll,
+                            totalExpense = totalExpenseAll,
+                            planBalance = planViewModel.planBalance.collectAsStateWithLifecycle().value,
+                            todayPlanTarget = planViewModel.todayPlanTarget.collectAsStateWithLifecycle().value,
+                            totalPlanTarget = planViewModel.totalPlanTarget.collectAsStateWithLifecycle().value,
+                            savePlanTarget = planViewModel.savePlanTarget.collectAsStateWithLifecycle().value,
+                            todayPlanNote = planViewModel.todayPlanNote.collectAsStateWithLifecycle().value,
+                            totalPlanNote = planViewModel.totalPlanNote.collectAsStateWithLifecycle().value,
+                            savePlanNote = planViewModel.savePlanNote.collectAsStateWithLifecycle().value,
+                            customPlans = planViewModel.customPlans.collectAsStateWithLifecycle().value,
+                            onBalanceChange = { planViewModel.updatePlanBalance(it) },
+                            onTodayPlanTargetSave = { planViewModel.updateTodayPlanTarget(it) },
+                            onTotalPlanTargetSave = { planViewModel.updateTotalPlanTarget(it) },
+                            onSavePlanTargetSave = { planViewModel.updateSavePlanTarget(it) },
+                            onTodayPlanNoteSave = { planViewModel.updateTodayPlanNote(it) },
+                            onTotalPlanNoteSave = { planViewModel.updateTotalPlanNote(it) },
+                            onSavePlanNoteSave = { planViewModel.updateSavePlanNote(it) },
+                            onUpdateCustomPlan = { index, target, note -> planViewModel.updateCustomPlan(index, target, note) },
+                            onDeleteCustomPlan = { index -> planViewModel.deleteCustomPlan(index) }
+                        )
+                    }
+                    composable(MainRoute.ANALYSIS) {
+                        // ── 账单分析 ──
+                        AnalysisScreen(viewModel = analysisViewModel)
+                    }
+                    composable(MainRoute.PROFILE) {
+                        // ── 我的页面 ──
+                        val nick by profileViewModel.nickname.collectAsStateWithLifecycle()
+                        val avatar by profileViewModel.avatarEmoji.collectAsStateWithLifecycle()
+                        val customUri by profileViewModel.customAvatarUri.collectAsStateWithLifecycle()
+                        ProfileScreen(
+                            nickname = nick,
+                            avatarEmoji = avatar,
+                            customAvatarUri = customUri,
+                            themeIndex = themeIdx,
+                            onNicknameChange = { profileViewModel.setNickname(it) },
+                            onAvatarChange = { profileViewModel.setAvatarEmoji(it) },
+                            onCustomAvatarChange = { profileViewModel.setCustomAvatarUri(it) },
+                            onThemeChange = {
+                                profileViewModel.setThemeIndex(it)
+                                scope.launch { snackbarHostState.showSnackbar("主题已切换") }
+                            },
+                            onClearAllData = {
+                                profileViewModel.clearAllData()
+                                scope.launch { snackbarHostState.showSnackbar("已清空全部记录") }
+                            },
+
+
+                            onNavigateToImport = { showImport = true },
+                            aiChatEnabled = aiChatEnabled,
+                            onAiChatToggle = { enabled ->
+                                profileViewModel.setAiChatEnabled(enabled)
+                                if (enabled) showAiChatProfileTutorial = true
+                            },
+                            followSystemTheme = profileViewModel.followSystemTheme.collectAsStateWithLifecycle().value,
+                            onFollowSystemThemeChange = { profileViewModel.setFollowSystemTheme(it) },
+                            customThemeConfig = customThemeCfg,
+                            onCustomThemeChange = { profileViewModel.setCustomThemeConfig(it) },
+                            onExportCsv = { start, end ->
+                                scope.launch {
+                                    val uri = profileViewModel.exportCsv(
+                                        if (start > 0) start else 0L,
+                                        if (end > 0) end else System.currentTimeMillis()
+                                    )
+                                    if (uri != null) {
+                                        val intent = Intent(Intent.ACTION_SEND).apply {
+                                            type = "text/csv"
+                                            putExtra(Intent.EXTRA_STREAM, uri)
+                                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                        }
+                                        context.startActivity(Intent.createChooser(intent, "导出表格"))
+                                    } else {
+                                        snackbarHostState.showSnackbar("导出失败")
+                                    }
+                                }
+                            },
+                            onExportImage = { start, end ->
+                                scope.launch {
+                                    val uri = profileViewModel.exportImage(
+                                        if (start > 0) start else 0L,
+                                        if (end > 0) end else System.currentTimeMillis()
+                                    )
+                                    if (uri != null) {
+                                        val intent = Intent(Intent.ACTION_SEND).apply {
+                                            type = "image/png"
+                                            putExtra(Intent.EXTRA_STREAM, uri)
+                                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                        }
+                                        context.startActivity(Intent.createChooser(intent, "导出图片"))
+                                    } else {
+                                        snackbarHostState.showSnackbar("导出图片失败")
+                                    }
+                                }
+                            },
+                            onBackupRestore = { showBackupDialog = true }
+                        )
+                    }
+                }
             }
         }
         }  // scaffoldContent
@@ -664,8 +711,8 @@ fun MainScreen(
     }
 
     // ── 手动模式计划页面提示 ──
-    LaunchedEffect(selectedBottomTab, isManualMode) {
-        if (selectedBottomTab == 1 && isManualMode) {
+    LaunchedEffect(currentRoute, isManualMode) {
+        if (currentRoute == MainRoute.PLAN && isManualMode) {
             showManualPlanAlert = true
         }
     }
@@ -813,9 +860,15 @@ fun WeChatStyleBalanceCard(
     onSearchClick: (() -> Unit)? = null
 ) {
     val net = income - expense
+    val incomeLabel = "收入 ¥${"%.2f".format(income)}"
+    val expenseLabel = "支出 ¥${"%.2f".format(expense)}"
+    val netLabel = if (net >= 0) "净收入 ¥${"%.2f".format(net)}" else "净支出 ¥${"%.2f".format(-net)}"
+    val a11yBalanceDesc = "$title：$netLabel，$incomeLabel，$expenseLabel"
 
     Card(
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth().clearAndSetSemantics {
+            contentDescription = a11yBalanceDesc
+        },
         shape = RoundedCornerShape(20.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 3.dp),
         colors = CardDefaults.cardColors(containerColor = CardBg())
@@ -1008,7 +1061,10 @@ fun PrivacyFooter() {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 8.dp),
+                .padding(horizontal = 16.dp, vertical = 8.dp)
+                .clearAndSetSemantics {
+                    contentDescription = "你的隐私数据仅保存在本地，不会上传"
+                },
             horizontalArrangement = Arrangement.Center,
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -1132,7 +1188,7 @@ fun TransactionItem(
                 ) {
                     Icon(
                         Icons.AutoMirrored.Filled.Message,
-                        contentDescription = null,
+                        contentDescription = "查看详情",
                         tint = Color.White,
                         modifier = Modifier.size(16.dp)
                     )
@@ -1156,7 +1212,7 @@ fun TransactionItem(
                 ) {
                     Icon(
                         Icons.Default.Delete,
-                        contentDescription = null,
+                        contentDescription = "删除",
                         tint = Color.White,
                         modifier = Modifier.size(16.dp)
                     )
