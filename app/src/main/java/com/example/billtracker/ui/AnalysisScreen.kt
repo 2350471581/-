@@ -902,33 +902,5 @@ private fun ChartCard(title: String, CardBg(): Color, content: @Composable () ->
 
 @Composable
 private fun AnalysisTransactionRow(tx: TransactionEntity) {
-    val sourceColor = when (tx.source) {
-        TransactionSource.WECHAT -> WechatGreen
-        TransactionSource.ALIPAY -> AlipayBlue
-        TransactionSource.MANUAL -> Color(0xFF9AA0A6)
-        TransactionSource.BANK -> Color(0xFFE65100)
-    }
-    val sourceIcon = when (tx.source) {
-        TransactionSource.WECHAT -> "微信"; TransactionSource.ALIPAY -> "支付宝"
-        TransactionSource.MANUAL -> "手动"; TransactionSource.BANK -> "银行"
-    }
-    val amountColor = if (tx.type == TransactionType.INCOME) IncomeGreen else ExpenseRed
-    val prefix = if (tx.type == TransactionType.INCOME) "+" else "-"
-    Row(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp, horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-        Surface(shape = RoundedCornerShape(4.dp), color = sourceColor.copy(alpha = 0.12f)) {
-            Text(sourceIcon, modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp), fontSize = 10.sp, fontWeight = FontWeight.Medium, color = sourceColor)
-        }
-        Spacer(Modifier.width(8.dp))
-        if (tx.category != "其他") {
-            Surface(shape = RoundedCornerShape(4.dp), color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)) {
-                Text(tx.category, modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp), fontSize = 10.sp, color = MaterialTheme.colorScheme.primary)
-            }
-            Spacer(Modifier.width(8.dp))
-        }
-        val displayText = tx.description.replace(Regex("""【[^】]*】"""), "").trim().take(20)
-        Text(displayText.ifEmpty { when (tx.source) { TransactionSource.MANUAL -> "手动记账"; TransactionSource.BANK -> "银行账单"; else -> "账单" } },
-            fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurface, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
-        Spacer(Modifier.width(8.dp))
-        Text("$prefix¥%.2f".format(tx.amount), fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = amountColor)
-    }
+    TransactionCard(transaction = tx, compactMode = true)
 }

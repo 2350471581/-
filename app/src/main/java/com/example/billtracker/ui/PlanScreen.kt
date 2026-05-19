@@ -158,9 +158,10 @@ fun PlanScreen(
         )
     }
     if (showSavePlanDetail) {
-        SavePlanDetailDialog(
+        PlanDetailDialog(
+            title = "省钱计划",
             target = savePlanTarget,
-            todayExpense = todayExpense,
+            currentAmount = todayExpense,
             note = savePlanNote,
             onDismiss = { showSavePlanDetail = false },
             onSave = { target, note ->
@@ -753,131 +754,6 @@ fun SavePlanCard(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     lineHeight = 18.sp
                 )
-            }
-        }
-    }
-}
-
-// ── 省钱计划详情弹窗 ──
-@Composable
-fun SavePlanDetailDialog(
-    target: Double,
-    todayExpense: Double,
-    note: String,
-    onDismiss: () -> Unit,
-    onSave: (Double, String) -> Unit
-) {
-    var targetText by remember(target) {
-        mutableStateOf(if (target <= 0) "" else "%.2f".format(target))
-    }
-    var noteInput by remember { mutableStateOf(note) }
-
-    Dialog(
-        onDismissRequest = onDismiss,
-        properties = DialogProperties(usePlatformDefaultWidth = false)
-    ) {
-        Card(
-            modifier = Modifier
-                .fillMaxWidth(0.9f)
-                .fillMaxHeight(0.55f),
-            shape = RoundedCornerShape(24.dp),
-            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
-            colors = CardDefaults.cardColors(containerColor = CardBg())
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(20.dp)
-            ) {
-                Text(
-                    text = "省钱计划",
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Spacer(Modifier.height(16.dp))
-
-                Text("目标金额", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Spacer(Modifier.height(4.dp))
-                OutlinedTextField(
-                    value = targetText,
-                    onValueChange = { targetText = it.filter { c -> c.isDigit() || c == '.' } },
-                    placeholder = { Text("0") },
-                    leadingIcon = { Text("¥", fontWeight = FontWeight.Bold) },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
-                    textStyle = LocalTextStyle.current.copy(fontSize = 22.sp, fontWeight = FontWeight.Bold)
-                )
-
-                Spacer(Modifier.height(12.dp))
-
-                Surface(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(10.dp),
-                    color = MaterialTheme.colorScheme.surfaceVariant
-                ) {
-                    Text(
-                        text = "今日支出: ¥%.2f".format(todayExpense),
-                        modifier = Modifier.padding(12.dp),
-                        fontSize = 13.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-
-                Spacer(Modifier.height(16.dp))
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(1.dp)
-                        .background(MaterialTheme.colorScheme.surfaceVariant)
-                )
-                Spacer(Modifier.height(12.dp))
-
-                Text(
-                    text = "备注",
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Spacer(Modifier.height(6.dp))
-
-                OutlinedTextField(
-                    value = noteInput,
-                    onValueChange = { noteInput = it },
-                    placeholder = { Text("添加备注...") },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(1f),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = MaterialTheme.colorScheme.primary,
-                        unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)
-                    )
-                )
-
-                Spacer(Modifier.height(12.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    TextButton(onClick = onDismiss) {
-                        Text("取消", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                    Spacer(Modifier.width(8.dp))
-                    Button(
-                        onClick = {
-                            val t = targetText.toDoubleOrNull() ?: 0.0
-                            onSave(t, noteInput)
-                        },
-                        shape = RoundedCornerShape(10.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
-                    ) {
-                        Text("保存", color = Color.White)
-                    }
-                }
             }
         }
     }

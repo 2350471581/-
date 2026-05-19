@@ -1158,10 +1158,11 @@ fun TransactionItem(
         }
 
         // ── 前景层：卡片（可点击进入详情、可左滑） ──
-        Card(
+        TransactionCard(
+            transaction = transaction,
+            onClick = onItemClick,
             modifier = Modifier
                 .offset { IntOffset(offsetX.value.roundToInt(), 0) }
-                .clickable { onItemClick() }
                 .pointerInput(Unit) {
                     detectHorizontalDragGestures(
                         onDragEnd = {
@@ -1183,129 +1184,8 @@ fun TransactionItem(
                         }
                     )
                 }
-                .fillMaxWidth(),
-            shape = RoundedCornerShape(14.dp),
-            elevation = CardDefaults.cardElevation(defaultElevation = 0.5.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(64.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                // 左侧色条
-                Box(
-                    modifier = Modifier
-                        .width(5.dp)
-                        .height(64.dp)
-                        .background(
-                            if (transaction.type == TransactionType.INCOME) IncomeGreen else ExpenseRed,
-                            shape = RoundedCornerShape(topEnd = 0.dp, bottomEnd = 0.dp)
-                        )
-                )
-
-                Spacer(modifier = Modifier.width(14.dp))
-
-                // 来源标签
-                val sourceColor = when (transaction.source) {
-                    TransactionSource.WECHAT -> WechatGreen
-                    TransactionSource.ALIPAY -> AlipayBlue
-                    TransactionSource.MANUAL -> SubtleText
-                    TransactionSource.BANK -> Color(0xFFE65100)
-                }
-                val sourceIcon = when (transaction.source) {
-                    TransactionSource.WECHAT -> "微信"
-                    TransactionSource.ALIPAY -> "支付宝"
-                    TransactionSource.MANUAL -> "其他"
-                    TransactionSource.BANK -> "银行"
-                }
-                Surface(
-                    shape = RoundedCornerShape(6.dp),
-                    color = sourceColor.copy(alpha = 0.12f)
-                ) {
-                    Text(
-                        text = sourceIcon,
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Medium,
-                        color = sourceColor
-                    )
-                }
-
-                // ── 分类标签 ──
-                if (transaction.category != "其他") {
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Surface(
-                        shape = RoundedCornerShape(6.dp),
-                        color = MaterialTheme.colorScheme.surfaceVariant
-                    ) {
-                        Text(
-                            text = "${CategoryManager.getCategoryIcon(transaction.category)} ${transaction.category}",
-                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 4.dp),
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Normal,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.width(12.dp))
-
-                // 描述 + 时间
-                Column(modifier = Modifier.weight(1f)) {
-                    val displayText = transaction.description
-                        .replace(Regex("""【[^】]*】"""), "")
-                        .trim()
-                        .take(25)
-                    Text(
-                        text = displayText.ifEmpty {
-                            if (transaction.source == TransactionSource.MANUAL) "手动记账"
-                            else if (transaction.source == TransactionSource.BANK) "银行账单"
-                            else "账单"
-                        },
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Medium,
-                        maxLines = 1,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    Spacer(modifier = Modifier.height(3.dp))
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        val timeStr = remember(transaction.dateMillis) {
-                            val sdf = SimpleDateFormat("yy/MM/dd HH:mm", Locale.getDefault())
-                            sdf.format(Date(transaction.dateMillis))
-                        }
-                        Text(text = timeStr, fontSize = 11.sp, color = SubtleText)
-                        if (transaction.description.contains("\n--备注--\n")) {
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(
-                                text = "注",
-                                fontSize = 9.sp,
-                                color = MutedIconColor,
-                                fontWeight = FontWeight.Medium
-                            )
-                        }
-                    }
-                }
-
-                // 金额
-                val amountColor = when (transaction.type) {
-                    TransactionType.INCOME -> IncomeGreen
-                    TransactionType.EXPENSE -> ExpenseRed
-                }
-                val typePrefix = when (transaction.type) {
-                    TransactionType.INCOME -> "+"
-                    TransactionType.EXPENSE -> "-"
-                }
-                Text(
-                    text = "$typePrefix¥%.2f".format(transaction.amount),
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(end = 14.dp),
-                    color = amountColor
-                )
-            }
-        }
+                .fillMaxWidth()
+        )
     }
 }
 
