@@ -1,13 +1,13 @@
 {
-  "versionCode": 7,
-  "versionName": "0.7",
-  "releaseNotes": "v0.7 更新内容：\n- 新增日账单分析视图\n- AI 月账单总结功能\n- 图表上下滑动查看\n- 主题配色升级（莫奈灰高级色系）\n- 界面优化与细节调整",
+  "versionCode": 9,
+  "versionName": "0.8.5",
+  "releaseNotes": "v0.8 更新内容：\n- 账单导入功能（CSV / 截图批量 OCR）\n- AI 聊天式记账（DeepSeek）\n- 自定义主题背景（图片 + 毛玻璃效果）\n- 数据导出（CSV + PNG 图片）\n- 备份恢复（含计划和设置）\n- 安全性改进",
   "md5": "",
-  "lanzouUrl": "https://wwbnt.lanzoul.com/iGDwC3ps5pli",
-  "lanzouPassword": "6666",
+  "lanzouUrl": "https://wwbnt.lanzoul.com/i9QHX3pv06xe",
+  "lanzouPassword": "d327",
   "sources": [
     {
-      "url": "https://github.com/2350471581/-/releases/download/v0.7/default.apk",
+      "url": "https://github.com/2350471581/-/releases/download/v0.8.5/default.apk",
       "priority": 1,
       "label": "GitHub 直连"
     }
