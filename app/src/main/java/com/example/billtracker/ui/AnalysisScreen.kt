@@ -19,6 +19,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -206,7 +209,7 @@ fun AnalysisScreen(viewModel: AnalysisViewModel) {
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     IconButton(onClick = { goPrev() }, modifier = Modifier.size(36.dp)) {
-                        Icon(Icons.Default.ChevronLeft, contentDescription = "上一个",
+                        Icon(Icons.Default.ChevronLeft, contentDescription = "上一个月",
                             tint = if (timeRange in listOf(TimeRange.DAY, TimeRange.MONTH, TimeRange.YEAR))
                                 MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                             else Color.Transparent,
@@ -249,7 +252,7 @@ fun AnalysisScreen(viewModel: AnalysisViewModel) {
                             }
                     )
                     IconButton(onClick = { goNext() }, modifier = Modifier.size(36.dp)) {
-                        Icon(Icons.Default.ChevronRight, contentDescription = "下一个",
+                        Icon(Icons.Default.ChevronRight, contentDescription = "下一个月",
                             tint = if (timeRange in listOf(TimeRange.MONTH, TimeRange.YEAR))
                                 MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                             else Color.Transparent,
@@ -887,7 +890,8 @@ private fun LegendItem(label: String, color: Color) {
 @Composable
 private fun ChartCard(title: String, content: @Composable () -> Unit) {
     Card(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)
+            .clearAndSetSemantics { contentDescription = "图表：$title" },
         shape = RoundedCornerShape(16.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
         colors = CardDefaults.cardColors(containerColor = CardBg())
