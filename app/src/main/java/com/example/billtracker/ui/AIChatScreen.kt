@@ -10,7 +10,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Send
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -24,9 +24,11 @@ import androidx.compose.ui.unit.sp
 import com.example.billtracker.data.AIBillService
 import com.example.billtracker.data.AIParseResult
 import com.example.billtracker.data.TransactionType
+import com.example.billtracker.data.AIBillException
 import kotlinx.coroutines.launch
 import androidx.activity.compose.BackHandler
 import com.example.billtracker.viewmodel.MainViewModel
+import androidx.hilt.navigation.compose.hiltViewModel
 
 private data class ChatMessage(
     val text: String,
@@ -41,9 +43,9 @@ private data class ChatMessage(
 fun AIChatScreen(
     onBack: () -> Unit,
     onAddTransaction: (Double, TransactionType, String) -> Unit,
-    viewModel: MainViewModel
+    viewModel: MainViewModel,
+    aiService: AIBillService
 ) {
-    val aiService = remember { AIBillService() }
     var messages by remember { mutableStateOf(listOf<ChatMessage>()) }
     var inputText by remember { mutableStateOf("") }
     val scope = rememberCoroutineScope()
@@ -84,15 +86,27 @@ fun AIChatScreen(
         scope.launch {
             val summary = viewModel.getTodaySummary()
             val result = aiService.parseChat(text, summary)
-            if (result != null && result.parseResult != null && result.parseResult.type != null) {
-                messages = messages + ChatMessage(text = result.reply, isUser = false, parseResult = result.parseResult)
-            } else if (result != null && result.parseResult != null && result.parseResult.type == null) {
-                val reply = result.reply.ifEmpty { "这笔是收入还是支出呀？" }
-                messages = messages + ChatMessage(text = reply, isUser = false, parseResult = result.parseResult, pendingTypeSelection = true)
-            } else {
-                val reply = result?.reply ?: "没太明白呢，跟我说花了多少钱或者收了多少钱就行～"
-                messages = messages + ChatMessage(text = reply, isUser = false)
-            }
+            result.fold(
+                onSuccess = { chatResult ->
+                    if (chatResult.parseResult != null && chatResult.parseResult.type != null) {
+                        messages = messages + ChatMessage(text = chatResult.reply, isUser = false, parseResult = chatResult.parseResult)
+                    } else if (chatResult.parseResult != null && chatResult.parseResult.type == null) {
+                        val reply = chatResult.reply.ifEmpty { "这笔是收入还是支出呀？" }
+                        messages = messages + ChatMessage(text = reply, isUser = false, parseResult = chatResult.parseResult, pendingTypeSelection = true)
+                    } else {
+                        val reply = chatResult.reply.ifEmpty { "没太明白呢，跟我说花了多少钱或者收了多少钱就行～" }
+                        messages = messages + ChatMessage(text = reply, isUser = false)
+                    }
+                },
+                onFailure = { err ->
+                    val errorMsg = (err as? AIBillException)?.let {
+                        if (it.isNetworkError) "网络不太稳定，稍等一下再试哦～"
+                        else if (it.isAuthError) "AI服务需要配置API Key，请在设置中设置"
+                        else it.message ?: "出了点小问题，再试一次吧～"
+                    } ?: "出了点小问题，再试一次吧～"
+                    messages = messages + ChatMessage(text = errorMsg, isUser = false)
+                }
+            )
         }
     }
 
@@ -103,7 +117,7 @@ fun AIChatScreen(
                 title = { Text("AI 记账", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "返回")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -153,8 +167,8 @@ fun AIChatScreen(
                                     snackbarHostState.showSnackbar("✅ 已记上啦")
                                     val summary = viewModel.getTodaySummary()
                                     val reply = aiService.chatWithContext(msg.parseResult!!, summary)
-                                    if (reply != null) {
-                                        messages = messages + ChatMessage(text = reply, isUser = false)
+                                    reply.onSuccess { text ->
+                                        messages = messages + ChatMessage(text = text, isUser = false)
                                     }
                                 }
                             }
@@ -317,7 +331,7 @@ private fun ChatBubble(
                                 modifier = Modifier.height(30.dp),
                                 contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp)
                             ) {
-                                Text("取消", fontSize = 12.sp, color = Color(0xFF9AA0A6))
+                                Text("取消", fontSize = 12.sp, color = SubtleText)
                             }
                         }
                     }

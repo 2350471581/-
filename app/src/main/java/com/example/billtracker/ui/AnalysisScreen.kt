@@ -36,7 +36,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.example.billtracker.data.DeepSeekService
 import com.example.billtracker.data.TransactionEntity
 import com.example.billtracker.data.TransactionSource
 import com.example.billtracker.data.TransactionType
@@ -156,8 +155,6 @@ fun AnalysisScreen(viewModel: MainViewModel) {
         }
     }
 
-    val isDark = isSystemInDarkTheme()
-    val frostedCardColor = if (isDark) Color(0xFF2A2A2A) else Color.White
     val catColors = remember {
         listOf(
             Color(0xFFE8824A), Color(0xFF4CAF7A), Color(0xFF5B8DB8), Color(0xFFD4A06A),
@@ -199,7 +196,7 @@ fun AnalysisScreen(viewModel: MainViewModel) {
             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
             shape = RoundedCornerShape(16.dp),
             elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
-            colors = CardDefaults.cardColors(containerColor = frostedCardColor)
+            colors = CardDefaults.cardColors(containerColor = CardBg())
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
                 Row(
@@ -284,7 +281,7 @@ fun AnalysisScreen(viewModel: MainViewModel) {
                                 .weight(1f)
                                 .height(8.dp)
                                 .clip(RoundedCornerShape(4.dp))
-                                .background(Color(0xFFF1F3F4))
+                                .background(DividerColor)
                         ) {
                             Box(
                                 modifier = Modifier
@@ -306,13 +303,13 @@ fun AnalysisScreen(viewModel: MainViewModel) {
 
         Spacer(Modifier.height(16.dp))
 
-        // ── 每日明细（仅日分析显示） ──
-        if (timeRange == TimeRange.DAY && dailyGroups.isNotEmpty()) {
+        // ── 每日明细（多日视图显示） ──
+        if (timeRange != TimeRange.DAY && dailyGroups.isNotEmpty()) {
             Card(
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
                 shape = RoundedCornerShape(16.dp),
                 elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
-                colors = CardDefaults.cardColors(containerColor = frostedCardColor)
+                colors = CardDefaults.cardColors(containerColor = CardBg())
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text("每日明细", fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
@@ -351,7 +348,7 @@ fun AnalysisScreen(viewModel: MainViewModel) {
         // ── 折线图（日视图不显示） ──
         if (timeRange != TimeRange.DAY) {
             Spacer(Modifier.height(16.dp))
-            ChartCard(title = "折线图", frostedCardColor = frostedCardColor) {
+            ChartCard(title = "折线图", CardBg() = CardBg()) {
                 LineChart(
                     transactions = filteredTransactions,
                     incomeColor = IncomeGreen,
@@ -360,7 +357,7 @@ fun AnalysisScreen(viewModel: MainViewModel) {
             }
 
             Spacer(Modifier.height(16.dp))
-            ChartCard(title = "柱状图", frostedCardColor = frostedCardColor) {
+            ChartCard(title = "柱状图", CardBg() = CardBg()) {
                 BarChart(
                     transactions = filteredTransactions,
                     incomeColor = IncomeGreen,
@@ -371,7 +368,7 @@ fun AnalysisScreen(viewModel: MainViewModel) {
 
         // ── 饼图 ──
         Spacer(Modifier.height(16.dp))
-        ChartCard(title = "饼图", frostedCardColor = frostedCardColor) {
+        ChartCard(title = "饼图", CardBg() = CardBg()) {
             PieChart(
                 categoryExpenses = categoryExpenses, catColors = catColors,
                 totalIncome = totalIncome, totalExpense = totalExpense
@@ -387,7 +384,7 @@ fun AnalysisScreen(viewModel: MainViewModel) {
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
                 shape = RoundedCornerShape(16.dp),
                 elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
-                colors = CardDefaults.cardColors(containerColor = frostedCardColor)
+                colors = CardDefaults.cardColors(containerColor = CardBg())
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text(
@@ -407,7 +404,7 @@ fun AnalysisScreen(viewModel: MainViewModel) {
                             Text(cat, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.width(48.dp), maxLines = 1, overflow = TextOverflow.Ellipsis)
                             Spacer(Modifier.width(8.dp))
-                            Box(modifier = Modifier.weight(1f).height(6.dp).clip(RoundedCornerShape(3.dp)).background(Color(0xFFF1F3F4))) {
+                            Box(modifier = Modifier.weight(1f).height(6.dp).clip(RoundedCornerShape(3.dp)).background(DividerColor)) {
                                 Box(modifier = Modifier.fillMaxHeight().fillMaxWidth(barFraction)
                                     .background(catColors[i % catColors.size], RoundedCornerShape(3.dp)))
                             }
@@ -452,7 +449,7 @@ fun AnalysisScreen(viewModel: MainViewModel) {
                         TimeRange.CUSTOM -> -1
                     }
                     val catMap = categoryExpenses.associate { it.key to it.value }
-                    summaryText = DeepSeekService.generateMonthlySummary(
+                    summaryText = viewModel.generateMonthlySummary(
                         year = yearLabel,
                         month = monthLabel,
                         totalIncome = totalIncome,
@@ -472,7 +469,7 @@ fun AnalysisScreen(viewModel: MainViewModel) {
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
                 shape = RoundedCornerShape(16.dp),
                 elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
-                colors = CardDefaults.cardColors(containerColor = frostedCardColor)
+                colors = CardDefaults.cardColors(containerColor = CardBg())
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -887,12 +884,12 @@ private fun LegendItem(label: String, color: Color) {
 }
 
 @Composable
-private fun ChartCard(title: String, frostedCardColor: Color, content: @Composable () -> Unit) {
+private fun ChartCard(title: String, CardBg(): Color, content: @Composable () -> Unit) {
     Card(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
         shape = RoundedCornerShape(16.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
-        colors = CardDefaults.cardColors(containerColor = frostedCardColor)
+        colors = CardDefaults.cardColors(containerColor = CardBg())
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(title, fontSize = 14.sp, fontWeight = FontWeight.SemiBold,

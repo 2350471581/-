@@ -271,6 +271,11 @@ data class CustomThemeConfig(
     }
 }
 
+@Composable
+fun CardBg(): Color {
+    return if (androidx.compose.foundation.isSystemInDarkTheme()) FrostedDark else FrostedWhite
+}
+
 val avatarEmojis = listOf(
     "😀", "😎", "🐱", "🌸", "🌟",
     "🎨", "🍀", "🌈", "🦋", "🌻",

@@ -1,8 +1,6 @@
 package com.example.billtracker.ui
 
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
@@ -17,9 +15,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -31,9 +27,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -41,8 +35,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import com.example.billtracker.R
+import com.example.billtracker.ui.components.ProfileMenuItem
 import com.example.billtracker.ui.components.TagChip
+import com.example.billtracker.ui.dialogs.CustomThemeConfigDialog
+import com.example.billtracker.ui.dialogs.ManualDownloadDialog
+import com.example.billtracker.ui.dialogs.ManualUpdateDialog
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -56,10 +53,11 @@ fun ProfileScreen(
     onCustomAvatarChange: (String) -> Unit,
     onThemeChange: (Int) -> Unit,
     onClearAllData: () -> Unit,
-    onNavigateToAnalysis: () -> Unit = {},
+
     onNavigateToImport: () -> Unit = {},
     onExportCsv: (startMillis: Long, endMillis: Long) -> Unit,
     onExportImage: (startMillis: Long, endMillis: Long) -> Unit = { _, _ -> },
+    onBackupRestore: () -> Unit = {},
     aiChatEnabled: Boolean = false,
     onAiChatToggle: (Boolean) -> Unit = {},
     followSystemTheme: Boolean = false,
@@ -109,8 +107,6 @@ fun ProfileScreen(
         } else null
     }
 
-    val isDark = isSystemInDarkTheme()
-    val frostedCardColor = if (isDark) Color(0xFF2A2A2A) else Color.White
     val primary = MaterialTheme.colorScheme.primary
     val primaryContainer = MaterialTheme.colorScheme.primaryContainer
 
@@ -195,7 +191,7 @@ fun ProfileScreen(
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
                 shape = RoundedCornerShape(16.dp),
                 elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-                colors = CardDefaults.cardColors(containerColor = frostedCardColor)
+                colors = CardDefaults.cardColors(containerColor = CardBg())
             ) {
                 Text(
                     text = "功能",
@@ -207,6 +203,8 @@ fun ProfileScreen(
                 ProfileMenuItem(Icons.Default.Share, "导出账单", { showExportDialog = true }, tint = primary)
                 HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
                 ProfileMenuItem(Icons.Default.FileUpload, "导入账单", { onNavigateToImport() }, tint = primary)
+                HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
+                ProfileMenuItem(Icons.Default.CloudUpload, "备份恢复", { onBackupRestore() }, tint = primary)
             }
         }
 
@@ -218,7 +216,7 @@ fun ProfileScreen(
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
                 shape = RoundedCornerShape(16.dp),
                 elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-                colors = CardDefaults.cardColors(containerColor = frostedCardColor)
+                colors = CardDefaults.cardColors(containerColor = CardBg())
             ) {
                 Text(
                     text = "设置",
@@ -228,7 +226,7 @@ fun ProfileScreen(
                     modifier = Modifier.padding(start = 16.dp, top = 14.dp, bottom = 6.dp)
                 )
                 ProfileMenuItem(Icons.Default.Palette, "更换主题", { showThemeDialog = true }, tint = primary)
-                Divider(modifier = Modifier.padding(horizontal = 16.dp), color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
+                HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
                 ProfileMenuItem(Icons.Default.Science, "AI 助手", { onAiChatToggle(!aiChatEnabled) },
                     tint = primary,
                     trailing = {
@@ -237,18 +235,18 @@ fun ProfileScreen(
                                 modifier = Modifier
                                     .size(22.dp)
                                     .clip(CircleShape)
-                                    .background(Color(0xFF07C160)),
+                                    .background(Color(0xFF6DD98E)),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Text("✓", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.White)
                             }
                         }
                     })
-                Divider(modifier = Modifier.padding(horizontal = 16.dp), color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
+                HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
                 ProfileMenuItem(Icons.Default.SystemUpdate, "检查更新", { showUpdateDialog = true }, tint = primary)
-                Divider(modifier = Modifier.padding(horizontal = 16.dp), color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
+                HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
                 ProfileMenuItem(Icons.Default.Info, "关于", { showAboutScreen = true }, tint = primary)
-                Divider(modifier = Modifier.padding(horizontal = 16.dp), color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
+                HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
                 ProfileMenuItem(Icons.Default.DeleteForever, "清空全部记录", { showClearConfirm = true },
                     tint = Color(0xFFEA6B5C))
             }
@@ -301,7 +299,7 @@ fun ProfileScreen(
             Card(
                 modifier = Modifier.fillMaxWidth(0.85f),
                 shape = RoundedCornerShape(24.dp),
-                colors = CardDefaults.cardColors(containerColor = frostedCardColor)
+                colors = CardDefaults.cardColors(containerColor = CardBg())
             ) {
                 Column(modifier = Modifier.padding(20.dp)) {
                     Text("选择头像", fontWeight = FontWeight.Bold, fontSize = 18.sp)
@@ -392,16 +390,6 @@ fun ProfileScreen(
                             .padding(vertical = 12.dp, horizontal = 4.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Surface(
-                            shape = CircleShape,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
-                            modifier = Modifier.size(28.dp)
-                        ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Text("🌓", fontSize = 16.sp)
-                            }
-                        }
-                        Spacer(Modifier.width(14.dp))
                         Text("跟随系统", fontSize = 16.sp,
                             color = if (followSystemTheme) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
                             fontWeight = if (followSystemTheme) FontWeight.Bold else FontWeight.Normal)
@@ -425,18 +413,6 @@ fun ProfileScreen(
                             .padding(vertical = 12.dp, horizontal = 4.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Surface(
-                            shape = CircleShape,
-                            color = if (customThemeConfig.imageUri.isNotBlank() && themeIndex == CUSTOM_THEME_INDEX)
-                                Color(customThemeConfig.extractedPrimary)
-                            else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
-                            modifier = Modifier.size(28.dp)
-                        ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Text("🖼", fontSize = 14.sp)
-                            }
-                        }
-                        Spacer(Modifier.width(14.dp))
                         Text(
                             text = if (customThemeConfig.imageUri.isNotBlank()) "自定义 ✓" else "自定义",
                             fontSize = 16.sp,
@@ -903,839 +879,8 @@ fun ProfileScreen(
     if (showManualUpdateDialog) {
         val info = updateInfo
         ManualUpdateDialog(
-            sources = info?.sources ?: emptyList(),
-            lanzouUrl = info?.lanzouUrl ?: "",
-            lanzouPassword = info?.lanzouPassword ?: "",
             versionName = info?.versionName ?: "",
             onDismiss = { showManualUpdateDialog = false }
-        )
-    }
-}
-
-// ── 自定义主题配置弹窗 ──
-@Composable
-private fun CustomThemeConfigDialog(
-    config: CustomThemeConfig,
-    onConfirm: (CustomThemeConfig) -> Unit,
-    onDismiss: () -> Unit
-) {
-    val context = LocalContext.current
-    var imageUri by remember { mutableStateOf(config.imageUri) }
-    var blurRadius by remember { mutableStateOf(config.blurRadius) }
-    var glassOpacity by remember { mutableStateOf(config.glassOpacity) }
-    var extractedPrimary by remember { mutableStateOf(Color(config.extractedPrimary)) }
-    var isLoadingColor by remember { mutableStateOf(false) }
-
-    val scope = rememberCoroutineScope()
-
-    val imagePickerLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.GetContent()
-    ) { uri: Uri? ->
-        uri?.let {
-            imageUri = it.toString()
-            isLoadingColor = true
-            scope.launch {
-                val color = withContext(Dispatchers.IO) {
-                    try {
-                        val bitmap = context.contentResolver.openInputStream(it)?.use { stream ->
-                            BitmapFactory.decodeStream(stream)
-                        }
-                        if (bitmap != null) {
-                            val palette = androidx.palette.graphics.Palette.from(bitmap).generate()
-                            val dominant = palette.getDominantColor(0xFFCDDBF7.toInt())
-                            Color(dominant)
-                        } else null
-                    } catch (_: Exception) { null }
-                }
-                if (color != null) extractedPrimary = color
-                isLoadingColor = false
-            }
-        }
-    }
-
-    // Load bitmap for preview
-    val previewBitmap = remember(imageUri) {
-        if (imageUri.isNotBlank()) {
-            try {
-                val uri = Uri.parse(imageUri)
-                context.contentResolver.openInputStream(uri)?.use { stream ->
-                    BitmapFactory.decodeStream(stream)
-                }
-            } catch (_: Exception) { null }
-        } else null
-    }
-
-    Dialog(
-        onDismissRequest = onDismiss,
-        properties = DialogProperties(usePlatformDefaultWidth = false)
-    ) {
-        Card(
-            modifier = Modifier.fillMaxWidth(0.9f).fillMaxHeight(0.75f),
-            shape = RoundedCornerShape(24.dp),
-            colors = CardDefaults.cardColors(containerColor = Color(0xFFF5F5F5))
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .verticalScroll(rememberScrollState())
-                    .padding(20.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                Text(
-                    "自定义主题",
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 20.sp,
-                    modifier = Modifier.fillMaxWidth(),
-                    textAlign = TextAlign.Center
-                )
-
-                // ── 背景图片预览 ──
-                Text("背景图片", fontSize = 13.sp, fontWeight = FontWeight.Medium,
-                    color = Color(0xFF5F6368))
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(160.dp)
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(MaterialTheme.colorScheme.surfaceVariant),
-                    contentAlignment = Alignment.Center
-                ) {
-                    if (previewBitmap != null) {
-                        Image(
-                            bitmap = previewBitmap.asImageBitmap(),
-                            contentDescription = "背景预览",
-                            modifier = Modifier.fillMaxSize(),
-                            contentScale = ContentScale.Crop
-                        )
-                        // Glass overlay preview
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .background(
-                                    extractedPrimary.copy(alpha = glassOpacity)
-                                )
-                        )
-                    } else {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Icon(
-                                Icons.Default.Image,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
-                                modifier = Modifier.size(48.dp)
-                            )
-                            Spacer(Modifier.height(8.dp))
-                            Text("选择一张图片作为背景",
-                                fontSize = 13.sp,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f))
-                        }
-                    }
-                }
-
-                // 选择图片按钮
-                Button(
-                    onClick = { imagePickerLauncher.launch("image/*") },
-                    shape = RoundedCornerShape(10.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = extractedPrimary)
-                ) {
-                    Icon(Icons.Default.PhotoLibrary, contentDescription = null, modifier = Modifier.size(18.dp))
-                    Spacer(Modifier.width(8.dp))
-                    Text(if (imageUri.isNotBlank()) "更换图片" else "选择图片")
-                }
-
-                // ── 模糊半径 ──
-                Text("模糊半径: ${blurRadius.toInt()}", fontSize = 13.sp, fontWeight = FontWeight.Medium,
-                    color = Color(0xFF5F6368))
-                Slider(
-                    value = blurRadius,
-                    onValueChange = { blurRadius = it },
-                    valueRange = 0f..25f,
-                    colors = SliderDefaults.colors(
-                        thumbColor = extractedPrimary,
-                        activeTrackColor = extractedPrimary
-                    )
-                )
-
-                // ── 毛玻璃透明度 ──
-                Text("毛玻璃透明度: ${(glassOpacity * 100).toInt()}%", fontSize = 13.sp,
-                    fontWeight = FontWeight.Medium, color = Color(0xFF5F6368))
-                Slider(
-                    value = glassOpacity,
-                    onValueChange = { glassOpacity = it },
-                    valueRange = 0f..0.8f,
-                    colors = SliderDefaults.colors(
-                        thumbColor = extractedPrimary,
-                        activeTrackColor = extractedPrimary
-                    )
-                )
-
-                // ── 提取的主色调 ──
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("按钮配色", fontSize = 13.sp, fontWeight = FontWeight.Medium,
-                        color = Color(0xFF5F6368))
-                    Spacer(Modifier.width(12.dp))
-                    if (isLoadingColor) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(20.dp),
-                            strokeWidth = 2.dp,
-                            color = extractedPrimary
-                        )
-                    } else {
-                        Surface(
-                            shape = CircleShape,
-                            color = extractedPrimary,
-                            modifier = Modifier.size(28.dp),
-                            border = androidx.compose.foundation.BorderStroke(2.dp, Color.White)
-                        ) {}
-                        Spacer(Modifier.width(8.dp))
-                        Text(
-                            "#%06X".format(extractedPrimary.value.toLong() and 0xFFFFFF),
-                            fontSize = 12.sp,
-                            color = Color(0xFF9AA0A6)
-                        )
-                    }
-                }
-
-                // ── 按钮 ──
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    OutlinedButton(
-                        onClick = {
-                            // Reset
-                            onConfirm(CustomThemeConfig())
-                        },
-                        shape = RoundedCornerShape(10.dp),
-                        modifier = Modifier.weight(1f)
-                    ) { Text("重置") }
-                    Button(
-                        onClick = {
-                            onConfirm(
-                                CustomThemeConfig(
-                                    imageUri = imageUri,
-                                    blurRadius = blurRadius,
-                                    glassOpacity = glassOpacity,
-                                    extractedPrimary = extractedPrimary.value.toLong()
-                                )
-                            )
-                        },
-                        shape = RoundedCornerShape(10.dp),
-                        modifier = Modifier.weight(1f),
-                        colors = ButtonDefaults.buttonColors(containerColor = extractedPrimary)
-                    ) { Text("确定") }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun ProfileMenuItem(
-    icon: ImageVector,
-    label: String,
-    onClick: () -> Unit,
-    tint: Color = Color.Unspecified,
-    trailing: @Composable (() -> Unit)? = null
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable { onClick() }
-            .padding(horizontal = 16.dp, vertical = 14.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Icon(icon, contentDescription = null, tint = if (tint != Color.Unspecified) tint else MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(22.dp))
-        Spacer(Modifier.width(14.dp))
-        Text(label, fontSize = 15.sp, color = if (tint != Color.Unspecified) tint else MaterialTheme.colorScheme.onSurface)
-        Spacer(Modifier.weight(1f))
-        if (trailing != null) {
-            trailing()
-        } else {
-            Icon(Icons.Default.ChevronRight, contentDescription = null, tint = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f), modifier = Modifier.size(20.dp))
-        }
-    }
-}
-
-// ── 手动下载弹窗 ──
-@Composable
-private fun ManualDownloadDialog(
-    url: String,
-    password: String,
-    onDismiss: () -> Unit
-) {
-    val context = LocalContext.current
-    var copiedLabel by remember { mutableStateOf("") }
-
-    fun copyToClipboard(text: String, label: String) {
-        val clipboard = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
-        clipboard.setPrimaryClip(android.content.ClipData.newPlainText("lanzou", text))
-        copiedLabel = label
-    }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        shape = RoundedCornerShape(20.dp),
-        title = {
-            Text("手动下载", fontWeight = FontWeight.Bold, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
-        },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                // 下载链接
-                Text("下载链接", fontSize = 13.sp, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Surface(
-                    onClick = { copyToClipboard(url, "链接已复制") },
-                    shape = RoundedCornerShape(10.dp),
-                    color = MaterialTheme.colorScheme.surfaceVariant,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Row(
-                        modifier = Modifier.padding(12.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = url.ifEmpty { "暂无" },
-                            fontSize = 13.sp,
-                            color = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.weight(1f),
-                            maxLines = 2
-                        )
-                        Spacer(Modifier.width(8.dp))
-                        Icon(
-                            Icons.Default.ContentCopy,
-                            contentDescription = "复制",
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(18.dp)
-                        )
-                    }
-                }
-
-                // 密码
-                Text("提取密码", fontSize = 13.sp, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Surface(
-                    onClick = { copyToClipboard(password, "密码已复制") },
-                    shape = RoundedCornerShape(10.dp),
-                    color = MaterialTheme.colorScheme.surfaceVariant,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Row(
-                        modifier = Modifier.padding(12.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = password.ifEmpty { "无密码" },
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurface,
-                            modifier = Modifier.weight(1f)
-                        )
-                        Spacer(Modifier.width(8.dp))
-                        Icon(
-                            Icons.Default.ContentCopy,
-                            contentDescription = "复制",
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(18.dp)
-                        )
-                    }
-                }
-
-                // 复制提示
-                if (copiedLabel.isNotEmpty()) {
-                    Text(
-                        text = copiedLabel,
-                        fontSize = 12.sp,
-                        color = IncomeGreen,
-                        fontWeight = FontWeight.Medium
-                    )
-                }
-
-                Text(
-                    text = "在浏览器中打开链接，输入提取密码即可下载 APK 手动安装。",
-                    fontSize = 12.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-                )
-            }
-        },
-        confirmButton = {
-            TextButton(onClick = onDismiss) {
-                Text("关闭", color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-        }
-    )
-}
-
-// ── 手动更新弹窗（蓝奏云 + GitHub） ──
-@Composable
-private fun ManualUpdateDialog(
-    sources: List<com.example.billtracker.data.UpdateSource>,
-    lanzouUrl: String,
-    lanzouPassword: String,
-    versionName: String,
-    onDismiss: () -> Unit
-) {
-    val context = LocalContext.current
-    var copiedLabel by remember { mutableStateOf("") }
-
-    fun copyToClipboard(text: String, label: String) {
-        val clipboard = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
-        clipboard.setPrimaryClip(android.content.ClipData.newPlainText("update_url", text))
-        copiedLabel = label
-    }
-
-    val lanzouLink = "https://wwbnt.lanzoul.com/iGDwC3ps5pli"
-    val lanzouPwd = "6666"
-    val githubLink = "https://github.com/2350471581/-/releases/download/v$versionName/default.apk"
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        shape = RoundedCornerShape(20.dp),
-        title = {
-            Text("手动更新 v$versionName", fontWeight = FontWeight.Bold, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
-        },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                // ── 蓝奏云推荐（置顶 + 星标） ──
-                Surface(
-                    shape = RoundedCornerShape(12.dp),
-                    color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Column(modifier = Modifier.padding(12.dp)) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text("⭐", fontSize = 16.sp)
-                            Spacer(Modifier.width(6.dp))
-                            Text(
-                                "蓝奏云 推荐",
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.primary
-                            )
-                        }
-                        Spacer(Modifier.height(8.dp))
-
-                        Text("链接", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Spacer(Modifier.height(4.dp))
-                        Surface(
-                            onClick = { copyToClipboard(lanzouLink, "蓝奏云链接已复制") },
-                            shape = RoundedCornerShape(8.dp),
-                            color = MaterialTheme.colorScheme.surfaceVariant,
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(10.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    text = lanzouLink,
-                                    fontSize = 11.sp,
-                                    color = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.weight(1f),
-                                    maxLines = 2
-                                )
-                                Spacer(Modifier.width(8.dp))
-                                Icon(
-                                    Icons.Default.ContentCopy,
-                                    contentDescription = "复制",
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(18.dp)
-                                )
-                            }
-                        }
-
-                        Spacer(Modifier.height(6.dp))
-                        Text("密码", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Spacer(Modifier.height(4.dp))
-                        Surface(
-                            onClick = { copyToClipboard(lanzouPwd, "密码已复制") },
-                            shape = RoundedCornerShape(8.dp),
-                            color = MaterialTheme.colorScheme.surfaceVariant,
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(10.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    text = lanzouPwd,
-                                    fontSize = 16.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.onSurface,
-                                    modifier = Modifier.weight(1f)
-                                )
-                                Spacer(Modifier.width(8.dp))
-                                Icon(
-                                    Icons.Default.ContentCopy,
-                                    contentDescription = "复制",
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(18.dp)
-                                )
-                            }
-                        }
-                    }
-                }
-
-                // ── GitHub 备用 ──
-                HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
-                Text(
-                    "备用下载源",
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-
-                Surface(
-                    onClick = { copyToClipboard(githubLink, "GitHub 链接已复制") },
-                    shape = RoundedCornerShape(10.dp),
-                    color = MaterialTheme.colorScheme.surfaceVariant,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Row(
-                        modifier = Modifier.padding(10.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = "GitHub 直连",
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Medium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            Text(
-                                text = githubLink,
-                                fontSize = 11.sp,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
-                                maxLines = 2
-                            )
-                        }
-                        Spacer(Modifier.width(8.dp))
-                        Icon(
-                            Icons.Default.ContentCopy,
-                            contentDescription = "复制",
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
-                            modifier = Modifier.size(18.dp)
-                        )
-                    }
-                }
-
-                if (copiedLabel.isNotEmpty()) {
-                    Text(
-                        text = copiedLabel,
-                        fontSize = 12.sp,
-                        color = IncomeGreen,
-                        fontWeight = FontWeight.Medium
-                    )
-                }
-
-                Text(
-                    text = "复制链接后在浏览器中打开，下载 APK 手动安装即可完成更新。",
-                    fontSize = 12.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-                )
-            }
-        },
-        confirmButton = {
-            TextButton(onClick = onDismiss) {
-                Text("关闭", color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-        }
-    )
-}
-
-// ── 关于页面 ──
-@Composable
-private fun AboutScreen(onBack: () -> Unit) {
-    val context = LocalContext.current
-    val isDark = isSystemInDarkTheme()
-    val bgColor = if (isDark) Color(0xFF1A1A1A) else Color(0xFFF8F9FA)
-    var showIntroDialog by remember { mutableStateOf(false) }
-    var showDonateDialog by remember { mutableStateOf(false) }
-
-    Box(modifier = Modifier.fillMaxSize().background(bgColor)) {
-        Column(modifier = Modifier.fillMaxSize()) {
-            // 顶部栏
-            Surface(
-                modifier = Modifier.fillMaxWidth(),
-                color = Color.Transparent,
-                shadowElevation = 2.dp
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .statusBarsPadding()
-                        .padding(horizontal = 8.dp, vertical = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    IconButton(onClick = onBack) {
-                        Icon(
-                            Icons.Default.ArrowBack,
-                            contentDescription = "返回",
-                            tint = MaterialTheme.colorScheme.onSurface
-                        )
-                    }
-                    Spacer(Modifier.width(4.dp))
-                    Text(
-                        text = "关于",
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                }
-            }
-
-            // 内容区
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .verticalScroll(rememberScrollState())
-                    .padding(horizontal = 20.dp)
-            ) {
-                Spacer(Modifier.height(16.dp))
-
-                // ── 1. 作者邮箱（直接显示） ──
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = if (isDark) Color(0xFF2A2A2A).copy(alpha = 0.88f) else Color.White                    ),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
-                ) {
-                    Column(modifier = Modifier.padding(20.dp)) {
-                        Text(
-                            text = "▎作者邮箱",
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                        Spacer(Modifier.height(10.dp))
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                Icons.Default.Email,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.size(18.dp)
-                            )
-                            Spacer(Modifier.width(8.dp))
-                            Text(
-                                text = "3175878672@qq.com",
-                                fontSize = 14.sp,
-                                color = MaterialTheme.colorScheme.primary,
-                                fontWeight = FontWeight.Medium
-                            )
-                        }
-                    }
-                }
-
-                Spacer(Modifier.height(16.dp))
-
-                // ── 2. 应用介绍（点击弹窗） ──
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { showIntroDialog = true },
-                    shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = if (isDark) Color(0xFF2A2A2A).copy(alpha = 0.88f) else Color.White                    ),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(20.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column(Modifier.weight(1f)) {
-                            Text(
-                                text = "▎应用介绍",
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-                            Spacer(Modifier.height(4.dp))
-                            Text(
-                                text = "记账助手 v${com.example.billtracker.data.AppUpdater.getCurrentVersionName(context)}",
-                                fontSize = 13.sp,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-                            )
-                        }
-                        Icon(
-                            Icons.Default.ChevronRight,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f),
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
-                }
-
-                Spacer(Modifier.height(16.dp))
-
-                // ── 3. 赞赏作者（点击弹窗） ──
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { showDonateDialog = true },
-                    shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = if (isDark) Color(0xFF2A2A2A).copy(alpha = 0.88f) else Color.White                    ),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(20.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column(Modifier.weight(1f)) {
-                            Text(
-                                text = "▎赞赏作者",
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-                            Spacer(Modifier.height(4.dp))
-                            Text(
-                                text = "如果这个应用对你有帮助，欢迎赞赏支持！",
-                                fontSize = 13.sp,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-                            )
-                        }
-                        Icon(
-                            Icons.Default.ChevronRight,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f),
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
-                }
-
-                Spacer(Modifier.height(32.dp))
-            }
-        }
-    }
-
-    // ── 介绍弹窗 ──
-    if (showIntroDialog) {
-        AlertDialog(
-            onDismissRequest = { showIntroDialog = false },
-            shape = RoundedCornerShape(20.dp),
-            title = {
-                Text("应用介绍", fontWeight = FontWeight.Bold, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
-            },
-            text = {
-                Column(Modifier.verticalScroll(rememberScrollState())) {
-                    Text(
-                        text = "记账助手",
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    Spacer(Modifier.height(4.dp))
-                    Text(
-                        text = "v${com.example.billtracker.data.AppUpdater.getCurrentVersionName(context)}",
-                        fontSize = 12.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-                    )
-                    Spacer(Modifier.height(16.dp))
-                    Text(
-                        text = "记账助手是一款轻量级的个人记账应用，帮你轻松管理日常收支。",
-                        fontSize = 14.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        lineHeight = 22.sp
-                    )
-                    Spacer(Modifier.height(16.dp))
-                    Text(
-                        text = "▎主要功能",
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    Spacer(Modifier.height(8.dp))
-                    val features = listOf(
-                        "手动/自动记账：支持手动输入和自动读取通知栏账单",
-                        "AI 聊天记账：自然语言描述即可记账，支持 DeepSeek 大模型",
-                        "智能分类：自动识别交易类别（餐饮、交通、购物等）",
-                        "账单分析：收支对比柱状图、支出分类饼图",
-                        "计划管理：设定预算目标，跟踪消费进度",
-                        "多主题配色：8 种内置主题 + 自定义图片背景，支持模糊与毛玻璃效果",
-                        "数据导出：支持 CSV 表格和图片导出，可选择时间范围",
-                        "图片导入：支持批量图片 OCR 识别支付宝/微信账单",
-                        "支付方式识别：自动检测微信、支付宝、银行卡等支付来源",
-                        "应用更新：支持在线检查更新，蓝奏云 + GitHub 双通道下载"
-                    )
-                    features.forEach { f ->
-                        Row(modifier = Modifier.padding(vertical = 3.dp)) {
-                            Text("•  ", fontSize = 14.sp, color = MaterialTheme.colorScheme.primary)
-                            Text(
-                                text = f,
-                                fontSize = 14.sp,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                lineHeight = 20.sp
-                            )
-                        }
-                    }
-                    Spacer(Modifier.height(16.dp))
-                    Text(
-                        text = "▎数据安全",
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    Spacer(Modifier.height(8.dp))
-                    Text(
-                        text = "所有账单数据仅保存在您的设备本地，不会上传到任何服务器。",
-                        fontSize = 14.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        lineHeight = 20.sp
-                    )
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = { showIntroDialog = false }) {
-                    Text("关闭", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-            }
-        )
-    }
-
-    // ── 赞赏弹窗 ──
-    if (showDonateDialog) {
-        AlertDialog(
-            onDismissRequest = { showDonateDialog = false },
-            shape = RoundedCornerShape(20.dp),
-            title = {
-                Text("赞赏作者", fontWeight = FontWeight.Bold, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
-            },
-            text = {
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Spacer(Modifier.height(4.dp))
-                    Text(
-                        text = "如果这个应用对你有帮助，欢迎赞赏支持！",
-                        fontSize = 14.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    Spacer(Modifier.height(16.dp))
-                    Image(
-                        painter = painterResource(id = R.drawable.zsm),
-                        contentDescription = "赞赏码",
-                        modifier = Modifier.size(240.dp),
-                        contentScale = ContentScale.Fit
-                    )
-                    Spacer(Modifier.height(12.dp))
-                    Text(
-                        text = "微信 / 支付宝 扫码赞赏",
-                        fontSize = 12.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
-                    )
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = { showDonateDialog = false }) {
-                    Text("关闭", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-            }
         )
     }
 }

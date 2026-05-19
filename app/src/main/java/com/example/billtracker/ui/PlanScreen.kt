@@ -221,13 +221,11 @@ private fun BalanceCard(
     }
     var isEditing by remember { mutableStateOf(false) }
 
-    val isDark = isSystemInDarkTheme()
-    val frostedCardColor = if (isDark) Color(0xFF2A2A2A) else Color.White
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(20.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        colors = CardDefaults.cardColors(containerColor = frostedCardColor)
+        colors = CardDefaults.cardColors(containerColor = CardBg())
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -340,15 +338,13 @@ fun PlanCard(
     note: String,
     onClick: () -> Unit
 ) {
-    val isDark = isSystemInDarkTheme()
-    val frostedCardColor = if (isDark) Color(0xFF2A2A2A) else Color.White
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .clickable { onClick() },
         shape = RoundedCornerShape(20.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        colors = CardDefaults.cardColors(containerColor = frostedCardColor)
+        colors = CardDefaults.cardColors(containerColor = CardBg())
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(title, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -528,8 +524,6 @@ fun PlanDetailDialog(
     }
     var noteInput by remember { mutableStateOf(note) }
 
-    val isDark = isSystemInDarkTheme()
-    val frostedCardColor = if (isDark) Color(0xFF2A2A2A) else Color.White
     Dialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false)
@@ -540,7 +534,7 @@ fun PlanDetailDialog(
                 .fillMaxHeight(0.55f),
             shape = RoundedCornerShape(24.dp),
             elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
-            colors = CardDefaults.cardColors(containerColor = frostedCardColor)
+            colors = CardDefaults.cardColors(containerColor = CardBg())
         ) {
             Column(
                 modifier = Modifier
@@ -580,7 +574,7 @@ fun PlanDetailDialog(
                     color = MaterialTheme.colorScheme.surfaceVariant
                 ) {
                     Text(
-                        text = if (currentAmount > 0) "当前进度: ¥%.2f".format(currentAmount) else "您还没有设置余额",
+                        text = if (currentAmount > 0) "当前进度: ¥%.2f".format(currentAmount) else "您还没有设置计划金额",
                         modifier = Modifier.padding(12.dp),
                         fontSize = 13.sp,
                         color = if (currentAmount > 0) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.outline
@@ -667,15 +661,13 @@ fun SavePlanCard(
         else -> MaterialTheme.colorScheme.primary
     }
 
-    val isDark = isSystemInDarkTheme()
-    val frostedCardColor = if (isDark) Color(0xFF2A2A2A) else Color.White
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .clickable { onClick() },
         shape = RoundedCornerShape(20.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        colors = CardDefaults.cardColors(containerColor = frostedCardColor)
+        colors = CardDefaults.cardColors(containerColor = CardBg())
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text("省钱计划", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -780,8 +772,6 @@ fun SavePlanDetailDialog(
     }
     var noteInput by remember { mutableStateOf(note) }
 
-    val isDark = isSystemInDarkTheme()
-    val frostedCardColor = if (isDark) Color(0xFF2A2A2A) else Color.White
     Dialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false)
@@ -792,7 +782,7 @@ fun SavePlanDetailDialog(
                 .fillMaxHeight(0.55f),
             shape = RoundedCornerShape(24.dp),
             elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
-            colors = CardDefaults.cardColors(containerColor = frostedCardColor)
+            colors = CardDefaults.cardColors(containerColor = CardBg())
         ) {
             Column(
                 modifier = Modifier
