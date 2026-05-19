@@ -1,7 +1,7 @@
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
-    id("kotlin-kapt")
+    id("com.google.devtools.ksp")
     id("com.google.dagger.hilt.android")
 }
 
@@ -18,16 +18,17 @@ fun getLocalProperty(key: String, default: String): String {
 }
 
 android {
-    namespace = "com.example.billtracker"
+    namespace = "com.jizhang.tracker"
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "com.example.billtracker"
+        applicationId = "com.jizhang.tracker"
         minSdk = 26
         targetSdk = 34
-        versionCode = 8
-        versionName = "0.8"
+        versionCode = 10
+        versionName = "0.9.0"
         // API key is now managed at runtime via ApiKeyManager (default bundled + user override in settings)
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
     signingConfigs {
@@ -76,7 +77,7 @@ android {
 }
 
 dependencies {
-    val composeBom = platform("androidx.compose:compose-bom:2024.02.00")
+    val composeBom = platform("androidx.compose:compose-bom:2024.06.00")
     implementation(composeBom)
 
     implementation("androidx.core:core-ktx:1.12.0")
@@ -93,7 +94,7 @@ dependencies {
 
     implementation("androidx.room:room-runtime:2.6.1")
     implementation("androidx.room:room-ktx:2.6.1")
-    kapt("androidx.room:room-compiler:2.6.1")
+    ksp("androidx.room:room-compiler:2.6.1")
 
     implementation("com.google.mlkit:text-recognition-chinese:16.0.0")
 
@@ -103,19 +104,31 @@ dependencies {
     // Palette for color extraction
     implementation("androidx.palette:palette-ktx:1.0.0")
 
-    // Hilt DI
+    // Hilt DI (KSP)
     implementation("com.google.dagger:hilt-android:2.50")
-    kapt("com.google.dagger:hilt-android-compiler:2.50")
+    ksp("com.google.dagger:hilt-android-compiler:2.50")
     implementation("androidx.hilt:hilt-navigation-compose:1.1.0")
     implementation("androidx.navigation:navigation-compose:2.7.7")
+
+    // Moshi JSON
+    implementation("com.squareup.moshi:moshi:1.15.1")
+    implementation("com.squareup.moshi:moshi-kotlin:1.15.1")
+    ksp("com.squareup.moshi:moshi-kotlin-codegen:1.15.1")
 
     // Testing
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.7.3")
     testImplementation("io.mockk:mockk:1.13.9")
     testImplementation("androidx.arch.core:core-testing:2.2.0")
-}
+    testImplementation("org.json:json:20230227")
 
-kapt {
-    correctErrorTypes = true
+    // Compose UI Test
+    androidTestImplementation(composeBom)
+    androidTestImplementation("androidx.compose.ui:ui-test-junit4")
+    debugImplementation("androidx.compose.ui:ui-test-manifest")
+    androidTestImplementation("androidx.test.ext:junit:1.1.5")
+    androidTestImplementation("androidx.test.espresso:espresso-core:3.5.1")
+
+    // Navigation Test
+    androidTestImplementation("androidx.navigation:navigation-testing:2.7.7")
 }
