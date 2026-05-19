@@ -16,6 +16,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -95,7 +97,8 @@ fun SearchScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp, vertical = 8.dp)
-                    .focusRequester(focusRequester),
+                    .focusRequester(focusRequester)
+                    .semantics { contentDescription = "搜索账单描述、分类或金额" },
                 placeholder = { Text("搜索描述、分类、金额...") },
                 leadingIcon = {
                     Icon(
@@ -109,7 +112,7 @@ fun SearchScreen(
                         IconButton(onClick = { query = "" }) {
                             Icon(
                                 Icons.Default.Close,
-                                contentDescription = "清除",
+                                contentDescription = "清除搜索内容",
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
