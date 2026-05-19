@@ -107,6 +107,7 @@ fun ProfileScreen(
         } else null
     }
 
+    val isDark = isSystemInDarkTheme()
     val primary = MaterialTheme.colorScheme.primary
     val primaryContainer = MaterialTheme.colorScheme.primaryContainer
 

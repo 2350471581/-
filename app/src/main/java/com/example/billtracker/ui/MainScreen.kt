@@ -76,7 +76,11 @@ import com.example.billtracker.ui.components.FirstLaunchDialog
 import com.example.billtracker.ui.components.DateRangeFilterDialog
 import com.example.billtracker.ui.ImportScreen
 import com.example.billtracker.ui.components.BillTrackerBottomBar
-import com.example.billtracker.viewmodel.MainViewModel
+import com.example.billtracker.ui.components.TransactionCard
+import com.example.billtracker.viewmodel.LedgerViewModel
+import com.example.billtracker.viewmodel.PlanViewModel
+import com.example.billtracker.viewmodel.AnalysisViewModel
+import com.example.billtracker.viewmodel.ProfileViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
@@ -86,14 +90,19 @@ import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
-fun MainScreen(viewModel: MainViewModel = viewModel()) {
-    val todayTransactions by viewModel.todayTransactions.collectAsStateWithLifecycle()
-    val todayIncome by viewModel.todayIncome.collectAsStateWithLifecycle()
-    val todayExpense by viewModel.todayExpense.collectAsStateWithLifecycle()
-    val allTransactions by viewModel.allTransactions.collectAsStateWithLifecycle()
-    val recentTransactions by viewModel.recentTransactions.collectAsStateWithLifecycle()
-    val filterStartDate by viewModel.filterStartDate.collectAsStateWithLifecycle()
-    val filterEndDate by viewModel.filterEndDate.collectAsStateWithLifecycle()
+fun MainScreen(
+    ledgerViewModel: LedgerViewModel = viewModel(),
+    planViewModel: PlanViewModel = viewModel(),
+    analysisViewModel: AnalysisViewModel = viewModel(),
+    profileViewModel: ProfileViewModel = viewModel()
+) {
+    val todayTransactions by ledgerViewModel.todayTransactions.collectAsStateWithLifecycle()
+    val todayIncome by ledgerViewModel.todayIncome.collectAsStateWithLifecycle()
+    val todayExpense by ledgerViewModel.todayExpense.collectAsStateWithLifecycle()
+    val allTransactions by ledgerViewModel.allTransactions.collectAsStateWithLifecycle()
+    val recentTransactions by ledgerViewModel.recentTransactions.collectAsStateWithLifecycle()
+    val filterStartDate by ledgerViewModel.filterStartDate.collectAsStateWithLifecycle()
+    val filterEndDate by ledgerViewModel.filterEndDate.collectAsStateWithLifecycle()
 
     var showAddDialog by remember { mutableStateOf(false) }
     var showAddPlanDialog by remember { mutableStateOf(false) }
@@ -112,14 +121,14 @@ fun MainScreen(viewModel: MainViewModel = viewModel()) {
 
     var lastBackTime by remember { mutableLongStateOf(0L) }
 
-    val isManualMode by viewModel.isManualMode.collectAsStateWithLifecycle()
-    val aiChatEnabled by viewModel.aiChatEnabled.collectAsStateWithLifecycle()
-    val aiChatTutorialDone by viewModel.aiChatTutorialDone.collectAsStateWithLifecycle()
-    val hasNotificationPermission by viewModel.hasNotificationPermission.collectAsStateWithLifecycle()
+    val isManualMode by ledgerViewModel.isManualMode.collectAsStateWithLifecycle()
+    val aiChatEnabled by profileViewModel.aiChatEnabled.collectAsStateWithLifecycle()
+    val aiChatTutorialDone by profileViewModel.aiChatTutorialDone.collectAsStateWithLifecycle()
+    val hasNotificationPermission by ledgerViewModel.hasNotificationPermission.collectAsStateWithLifecycle()
     var showManualPlanAlert by remember { mutableStateOf(false) }
 
-    val themeIdx by viewModel.themeIndex.collectAsStateWithLifecycle()
-    val customThemeCfg by viewModel.customThemeConfig.collectAsStateWithLifecycle()
+    val themeIdx by profileViewModel.themeIndex.collectAsStateWithLifecycle()
+    val customThemeCfg by profileViewModel.customThemeConfig.collectAsStateWithLifecycle()
     val isDark = isSystemInDarkTheme()
     val gradientPair = remember(themeIdx, isDark) {
         val palette = if (isDark) DarkThemes.getOrElse(themeIdx) { DarkThemes[0] }
@@ -132,7 +141,7 @@ fun MainScreen(viewModel: MainViewModel = viewModel()) {
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
-                viewModel.checkNotificationPermission()
+                ledgerViewModel.checkNotificationPermission()
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
@@ -150,8 +159,8 @@ fun MainScreen(viewModel: MainViewModel = viewModel()) {
     ) { granted ->
         hasPermission = granted
         if (granted) {
-            viewModel.setManualMode(false) // 切换到自动模式
-            viewModel.refreshFromSms()
+            ledgerViewModel.setManualMode(false) // 切换到自动模式
+            ledgerViewModel.refreshFromSms()
         }
     }
 
@@ -160,7 +169,7 @@ fun MainScreen(viewModel: MainViewModel = viewModel()) {
     ) { uri: Uri? ->
         uri?.let {
             scope.launch {
-                val count = viewModel.importBackup(it)
+                val count = profileViewModel.importBackup(it)
                 snackbarHostState.showSnackbar("已导入 $count 条账单" + if (count > 0) "" else "（无新数据或数据已存在）")
             }
         }
@@ -173,7 +182,7 @@ fun MainScreen(viewModel: MainViewModel = viewModel()) {
             permissionLauncher.launch(Manifest.permission.READ_SMS)
         } else {
             // 切换到手动模式
-            viewModel.setManualMode(true)
+            ledgerViewModel.setManualMode(true)
         }
     }
 
@@ -258,17 +267,17 @@ fun MainScreen(viewModel: MainViewModel = viewModel()) {
                 AIChatScreen(
                     onBack = { showAIChat = false },
                     onAddTransaction = { amount, type, desc ->
-                        viewModel.addTransaction(amount, type, desc) { success ->
+                        ledgerViewModel.addTransaction(amount, type, desc) { success ->
                             if (!success) scope.launch { snackbarHostState.showSnackbar("检测到重复账单，已跳过") }
                         }
                     },
-                    viewModel = viewModel,
-                    aiService = viewModel.aiBillService
+                    viewModel = ledgerViewModel,
+                    aiService = ledgerViewModel.aiBillService
                 )
             } else if (showImport) {
                 ImportScreen(
                     onBack = { showImport = false },
-                    onImport = { bills -> viewModel.importBills(bills) { dup -> scope.launch { snackbarHostState.showSnackbar("已导入 ${bills.size - dup} 条账单" + if (dup > 0) "，跳过 $dup 条重复" else "") } } }
+                    onImport = { bills -> ledgerViewModel.importBills(bills) { dup -> scope.launch { snackbarHostState.showSnackbar("已导入 ${bills.size - dup} 条账单" + if (dup > 0) "，跳过 $dup 条重复" else "") } } }
                 )
             } else if (showSearch) {
                 SearchScreen(onBack = { showSearch = false }, allTransactions = allTransactions)
@@ -314,7 +323,7 @@ fun MainScreen(viewModel: MainViewModel = viewModel()) {
                                 color = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.weight(1f)
                             )
-                            TextButton(onClick = { viewModel.openNotificationSettings() }) {
+                            TextButton(onClick = { ledgerViewModel.openNotificationSettings() }) {
                                 Text("去开启", fontSize = 13.sp, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
                             }
                         }
@@ -323,7 +332,7 @@ fun MainScreen(viewModel: MainViewModel = viewModel()) {
 
                 // ── 微信风格余额卡片 ──
                 val isAllPage = pagerState.currentPage == 1
-                val installDate = viewModel.installDateMillis
+                val installDate = ledgerViewModel.installDateMillis
                 val totalIncome by remember {
                     derivedStateOf {
                         allTransactions.filter { it.type == TransactionType.INCOME && it.dateMillis >= installDate }
@@ -344,7 +353,7 @@ fun MainScreen(viewModel: MainViewModel = viewModel()) {
                     isManualMode = isManualMode,
                     onToggleMode = onToggleMode,
                     onDateFilterClick = { showDateFilterDialog = true },
-                    onRefresh = { viewModel.refreshFromSms() },
+                    onRefresh = { ledgerViewModel.refreshFromSms() },
                     onSearchClick = { showSearch = true }
                 )
 
@@ -401,7 +410,7 @@ fun MainScreen(viewModel: MainViewModel = viewModel()) {
                     modifier = Modifier.weight(1f)
                 ) { page ->
                     val deleteCallback: (Long) -> Unit = { id ->
-                        viewModel.deleteTransaction(id)
+                        ledgerViewModel.deleteTransaction(id)
                         scope.launch { snackbarHostState.showSnackbar("已删除") }
                     }
                     val detailCallback: (TransactionEntity) -> Unit = { tx ->
@@ -429,7 +438,7 @@ fun MainScreen(viewModel: MainViewModel = viewModel()) {
                 PrivacyFooter()
             } else if (selectedBottomTab == 1) {
                 // ── 计划页面 ──
-                val installDate = viewModel.installDateMillis
+                val installDate = ledgerViewModel.installDateMillis
                 val totalIncomeAll by remember {
                     derivedStateOf {
                         allTransactions.filter { it.type == TransactionType.INCOME && it.dateMillis >= installDate }
@@ -447,46 +456,46 @@ fun MainScreen(viewModel: MainViewModel = viewModel()) {
                     todayExpense = todayExpense,
                     totalIncome = totalIncomeAll,
                     totalExpense = totalExpenseAll,
-                    planBalance = viewModel.planBalance.collectAsStateWithLifecycle().value,
-                    todayPlanTarget = viewModel.todayPlanTarget.collectAsStateWithLifecycle().value,
-                    totalPlanTarget = viewModel.totalPlanTarget.collectAsStateWithLifecycle().value,
-                    savePlanTarget = viewModel.savePlanTarget.collectAsStateWithLifecycle().value,
-                    todayPlanNote = viewModel.todayPlanNote.collectAsStateWithLifecycle().value,
-                    totalPlanNote = viewModel.totalPlanNote.collectAsStateWithLifecycle().value,
-                    savePlanNote = viewModel.savePlanNote.collectAsStateWithLifecycle().value,
-                    customPlans = viewModel.customPlans.collectAsStateWithLifecycle().value,
-                    onBalanceChange = { viewModel.updatePlanBalance(it) },
-                    onTodayPlanTargetSave = { viewModel.updateTodayPlanTarget(it) },
-                    onTotalPlanTargetSave = { viewModel.updateTotalPlanTarget(it) },
-                    onSavePlanTargetSave = { viewModel.updateSavePlanTarget(it) },
-                    onTodayPlanNoteSave = { viewModel.updateTodayPlanNote(it) },
-                    onTotalPlanNoteSave = { viewModel.updateTotalPlanNote(it) },
-                    onSavePlanNoteSave = { viewModel.updateSavePlanNote(it) },
-                    onUpdateCustomPlan = { index, target, note -> viewModel.updateCustomPlan(index, target, note) },
-                    onDeleteCustomPlan = { index -> viewModel.deleteCustomPlan(index) }
+                    planBalance = planViewModel.planBalance.collectAsStateWithLifecycle().value,
+                    todayPlanTarget = planViewModel.todayPlanTarget.collectAsStateWithLifecycle().value,
+                    totalPlanTarget = planViewModel.totalPlanTarget.collectAsStateWithLifecycle().value,
+                    savePlanTarget = planViewModel.savePlanTarget.collectAsStateWithLifecycle().value,
+                    todayPlanNote = planViewModel.todayPlanNote.collectAsStateWithLifecycle().value,
+                    totalPlanNote = planViewModel.totalPlanNote.collectAsStateWithLifecycle().value,
+                    savePlanNote = planViewModel.savePlanNote.collectAsStateWithLifecycle().value,
+                    customPlans = planViewModel.customPlans.collectAsStateWithLifecycle().value,
+                    onBalanceChange = { planViewModel.updatePlanBalance(it) },
+                    onTodayPlanTargetSave = { planViewModel.updateTodayPlanTarget(it) },
+                    onTotalPlanTargetSave = { planViewModel.updateTotalPlanTarget(it) },
+                    onSavePlanTargetSave = { planViewModel.updateSavePlanTarget(it) },
+                    onTodayPlanNoteSave = { planViewModel.updateTodayPlanNote(it) },
+                    onTotalPlanNoteSave = { planViewModel.updateTotalPlanNote(it) },
+                    onSavePlanNoteSave = { planViewModel.updateSavePlanNote(it) },
+                    onUpdateCustomPlan = { index, target, note -> planViewModel.updateCustomPlan(index, target, note) },
+                    onDeleteCustomPlan = { index -> planViewModel.deleteCustomPlan(index) }
                 )
             } else if (selectedBottomTab == 2) {
                 // ── 账单分析 ──
-                AnalysisScreen(viewModel = viewModel)
+                AnalysisScreen(viewModel = analysisViewModel)
             } else if (selectedBottomTab == 3) {
                 // ── 我的页面 ──
-                val nick by viewModel.nickname.collectAsStateWithLifecycle()
-                val avatar by viewModel.avatarEmoji.collectAsStateWithLifecycle()
-                val customUri by viewModel.customAvatarUri.collectAsStateWithLifecycle()
+                val nick by profileViewModel.nickname.collectAsStateWithLifecycle()
+                val avatar by profileViewModel.avatarEmoji.collectAsStateWithLifecycle()
+                val customUri by profileViewModel.customAvatarUri.collectAsStateWithLifecycle()
                 ProfileScreen(
                     nickname = nick,
                     avatarEmoji = avatar,
                     customAvatarUri = customUri,
                     themeIndex = themeIdx,
-                    onNicknameChange = { viewModel.setNickname(it) },
-                    onAvatarChange = { viewModel.setAvatarEmoji(it) },
-                    onCustomAvatarChange = { viewModel.setCustomAvatarUri(it) },
+                    onNicknameChange = { profileViewModel.setNickname(it) },
+                    onAvatarChange = { profileViewModel.setAvatarEmoji(it) },
+                    onCustomAvatarChange = { profileViewModel.setCustomAvatarUri(it) },
                     onThemeChange = {
-                        viewModel.setThemeIndex(it)
+                        profileViewModel.setThemeIndex(it)
                         scope.launch { snackbarHostState.showSnackbar("主题已切换") }
                     },
                     onClearAllData = {
-                        viewModel.clearAllData()
+                        profileViewModel.clearAllData()
                         scope.launch { snackbarHostState.showSnackbar("已清空全部记录") }
                     },
 
@@ -494,16 +503,16 @@ fun MainScreen(viewModel: MainViewModel = viewModel()) {
                     onNavigateToImport = { showImport = true },
                     aiChatEnabled = aiChatEnabled,
                     onAiChatToggle = { enabled ->
-                        viewModel.setAiChatEnabled(enabled)
+                        profileViewModel.setAiChatEnabled(enabled)
                         if (enabled) showAiChatProfileTutorial = true
                     },
-                    followSystemTheme = viewModel.followSystemTheme.collectAsStateWithLifecycle().value,
-                    onFollowSystemThemeChange = { viewModel.setFollowSystemTheme(it) },
+                    followSystemTheme = profileViewModel.followSystemTheme.collectAsStateWithLifecycle().value,
+                    onFollowSystemThemeChange = { profileViewModel.setFollowSystemTheme(it) },
                     customThemeConfig = customThemeCfg,
-                    onCustomThemeChange = { viewModel.setCustomThemeConfig(it) },
+                    onCustomThemeChange = { profileViewModel.setCustomThemeConfig(it) },
                     onExportCsv = { start, end ->
                         scope.launch {
-                            val uri = viewModel.exportCsv(
+                            val uri = profileViewModel.exportCsv(
                                 if (start > 0) start else 0L,
                                 if (end > 0) end else System.currentTimeMillis()
                             )
@@ -521,7 +530,7 @@ fun MainScreen(viewModel: MainViewModel = viewModel()) {
                     },
                     onExportImage = { start, end ->
                         scope.launch {
-                            val uri = viewModel.exportImage(
+                            val uri = profileViewModel.exportImage(
                                 if (start > 0) start else 0L,
                                 if (end > 0) end else System.currentTimeMillis()
                             )
@@ -558,7 +567,7 @@ fun MainScreen(viewModel: MainViewModel = viewModel()) {
         AddPlanDialog(
             onDismiss = { showAddPlanDialog = false },
             onConfirm = { name, amount, note, type ->
-                viewModel.addCustomPlan(name, amount, note, type)
+                planViewModel.addCustomPlan(name, amount, note, type)
                 showAddPlanDialog = false
             }
         )
@@ -569,7 +578,7 @@ fun MainScreen(viewModel: MainViewModel = viewModel()) {
         AddTransactionDialog(
             onDismiss = { showAddDialog = false },
             onConfirm = { amount, type, note ->
-                viewModel.addTransaction(amount, type, note) { success ->
+                ledgerViewModel.addTransaction(amount, type, note) { success ->
                     if (!success) {
                         scope.launch { snackbarHostState.showSnackbar("检测到重复账单，已跳过") }
                     }
@@ -595,7 +604,7 @@ fun MainScreen(viewModel: MainViewModel = viewModel()) {
                         onClick = {
                             showBackupDialog = false
                             scope.launch {
-                                val uri = viewModel.exportBackup()
+                                val uri = profileViewModel.exportBackup()
                                 if (uri != null) {
                                     val intent = Intent(Intent.ACTION_SEND).apply {
                                         type = "application/json"
@@ -649,7 +658,7 @@ fun MainScreen(viewModel: MainViewModel = viewModel()) {
     detailTransaction?.let { tx ->
         TransactionDetailCard(
             transaction = tx,
-            onNoteSave = { id, note -> viewModel.updateTransactionNote(id, note) },
+            onNoteSave = { id, note -> ledgerViewModel.updateTransactionNote(id, note) },
             onDismiss = { detailTransaction = null }
         )
     }
@@ -688,7 +697,7 @@ fun MainScreen(viewModel: MainViewModel = viewModel()) {
         val enabled = countdown <= 0
         LaunchedEffect(Unit) { while (countdown > 0) { delay(1000); countdown-- } }
         AlertDialog(
-            onDismissRequest = { if (enabled) { showAIChatTutorial = false; viewModel.markAiChatTutorialDone(); showAIChat = true } },
+            onDismissRequest = { if (enabled) { showAIChatTutorial = false; profileViewModel.markAiChatTutorialDone(); showAIChat = true } },
             shape = RoundedCornerShape(20.dp),
             title = { Text("AI 聊天记账", fontWeight = FontWeight.Bold, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center) },
             text = {
@@ -718,7 +727,7 @@ fun MainScreen(viewModel: MainViewModel = viewModel()) {
             },
             confirmButton = {
                 Button(
-                    onClick = { showAIChatTutorial = false; viewModel.markAiChatTutorialDone(); showAIChat = true },
+                    onClick = { showAIChatTutorial = false; profileViewModel.markAiChatTutorialDone(); showAIChat = true },
                     enabled = enabled,
                     shape = RoundedCornerShape(10.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
@@ -763,10 +772,10 @@ fun MainScreen(viewModel: MainViewModel = viewModel()) {
     }
 
     // ── 首次启动弹窗 ──
-    val isFirstLaunch by viewModel.isFirstLaunch.collectAsStateWithLifecycle()
+    val isFirstLaunch by profileViewModel.isFirstLaunch.collectAsStateWithLifecycle()
     if (isFirstLaunch) {
         FirstLaunchDialog(
-            onDismiss = { viewModel.dismissFirstLaunch() }
+            onDismiss = { profileViewModel.dismissFirstLaunch() }
         )
     }
 
@@ -776,13 +785,13 @@ fun MainScreen(viewModel: MainViewModel = viewModel()) {
             initialStart = filterStartDate,
             initialEnd = filterEndDate,
             onConfirm = { start, end ->
-                viewModel.filterStartDate.value = start
-                viewModel.filterEndDate.value = end
+                ledgerViewModel.filterStartDate.value = start
+                ledgerViewModel.filterEndDate.value = end
                 showDateFilterDialog = false
             },
             onReset = {
-                viewModel.filterStartDate.value = null
-                viewModel.filterEndDate.value = null
+                ledgerViewModel.filterStartDate.value = null
+                ledgerViewModel.filterEndDate.value = null
                 showDateFilterDialog = false
             },
             onDismiss = { showDateFilterDialog = false }

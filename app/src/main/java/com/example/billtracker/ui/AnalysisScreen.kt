@@ -40,14 +40,15 @@ import com.example.billtracker.data.TransactionEntity
 import com.example.billtracker.data.TransactionSource
 import com.example.billtracker.data.TransactionType
 import com.example.billtracker.ui.components.TagChip
-import com.example.billtracker.viewmodel.MainViewModel
+import com.example.billtracker.ui.components.TransactionCard
+import com.example.billtracker.viewmodel.AnalysisViewModel
 import java.text.SimpleDateFormat
 import java.util.*
 
 private enum class TimeRange { DAY, WEEK, MONTH, YEAR, CUSTOM }
 
 @Composable
-fun AnalysisScreen(viewModel: MainViewModel) {
+fun AnalysisScreen(viewModel: AnalysisViewModel) {
     val allTransactions by viewModel.allTransactions.collectAsStateWithLifecycle()
     val cal = remember { Calendar.getInstance() }
     val context = LocalContext.current
@@ -348,7 +349,7 @@ fun AnalysisScreen(viewModel: MainViewModel) {
         // ── 折线图（日视图不显示） ──
         if (timeRange != TimeRange.DAY) {
             Spacer(Modifier.height(16.dp))
-            ChartCard(title = "折线图", CardBg() = CardBg()) {
+            ChartCard(title = "折线图") {
                 LineChart(
                     transactions = filteredTransactions,
                     incomeColor = IncomeGreen,
@@ -357,7 +358,7 @@ fun AnalysisScreen(viewModel: MainViewModel) {
             }
 
             Spacer(Modifier.height(16.dp))
-            ChartCard(title = "柱状图", CardBg() = CardBg()) {
+            ChartCard(title = "柱状图") {
                 BarChart(
                     transactions = filteredTransactions,
                     incomeColor = IncomeGreen,
@@ -368,7 +369,7 @@ fun AnalysisScreen(viewModel: MainViewModel) {
 
         // ── 饼图 ──
         Spacer(Modifier.height(16.dp))
-        ChartCard(title = "饼图", CardBg() = CardBg()) {
+        ChartCard(title = "饼图") {
             PieChart(
                 categoryExpenses = categoryExpenses, catColors = catColors,
                 totalIncome = totalIncome, totalExpense = totalExpense
@@ -884,7 +885,7 @@ private fun LegendItem(label: String, color: Color) {
 }
 
 @Composable
-private fun ChartCard(title: String, CardBg(): Color, content: @Composable () -> Unit) {
+private fun ChartCard(title: String, content: @Composable () -> Unit) {
     Card(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
         shape = RoundedCornerShape(16.dp),

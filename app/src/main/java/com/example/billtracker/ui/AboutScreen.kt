@@ -78,9 +78,7 @@ fun AboutScreen(onBack: () -> Unit) {
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = CardBg(),
-
+                    colors = CardDefaults.cardColors(containerColor = CardBg()),
                     elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
                 ) {
                     Column(modifier = Modifier.padding(20.dp)) {
@@ -117,9 +115,7 @@ fun AboutScreen(onBack: () -> Unit) {
                         .fillMaxWidth()
                         .clickable { showIntroDialog = true },
                     shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = CardBg(),
-
+                    colors = CardDefaults.cardColors(containerColor = CardBg()),
                     elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
                 ) {
                     Row(
@@ -159,9 +155,7 @@ fun AboutScreen(onBack: () -> Unit) {
                         .fillMaxWidth()
                         .clickable { showDonateDialog = true },
                     shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = CardBg(),
-
+                    colors = CardDefaults.cardColors(containerColor = CardBg()),
                     elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
                 ) {
                     Row(

@@ -27,8 +27,7 @@ import com.example.billtracker.data.TransactionType
 import com.example.billtracker.data.AIBillException
 import kotlinx.coroutines.launch
 import androidx.activity.compose.BackHandler
-import com.example.billtracker.viewmodel.MainViewModel
-import androidx.hilt.navigation.compose.hiltViewModel
+import com.example.billtracker.viewmodel.LedgerViewModel
 
 private data class ChatMessage(
     val text: String,
@@ -43,7 +42,7 @@ private data class ChatMessage(
 fun AIChatScreen(
     onBack: () -> Unit,
     onAddTransaction: (Double, TransactionType, String) -> Unit,
-    viewModel: MainViewModel,
+    viewModel: LedgerViewModel,
     aiService: AIBillService
 ) {
     var messages by remember { mutableStateOf(listOf<ChatMessage>()) }
