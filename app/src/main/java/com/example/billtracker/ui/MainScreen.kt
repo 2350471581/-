@@ -9,78 +9,49 @@ import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.automirrored.filled.Message
-import androidx.compose.material.icons.filled.DateRange
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Receipt
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.FileUpload
 import androidx.compose.material.icons.filled.FileDownload
-import com.example.billtracker.data.BackupManager
-import com.example.billtracker.data.CategoryManager
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.semantics.clearAndSetSemantics
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
-import androidx.core.content.FileProvider
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.billtracker.data.TransactionEntity
-import com.example.billtracker.data.TransactionSource
 import com.example.billtracker.data.TransactionType
-import com.example.billtracker.ui.CUSTOM_THEME_INDEX
 import com.example.billtracker.ui.components.BackgroundGradient
 import com.example.billtracker.ui.components.CustomThemeBackground
 import com.example.billtracker.ui.components.AddTransactionDialog
 import com.example.billtracker.ui.components.TransactionDetailCard
 import com.example.billtracker.ui.components.FirstLaunchDialog
 import com.example.billtracker.ui.components.DateRangeFilterDialog
-import com.example.billtracker.ui.ImportScreen
 import com.example.billtracker.ui.components.BillTrackerBottomBar
 import com.example.billtracker.ui.components.TransactionCard
-import com.example.billtracker.ui.components.TransactionDetailCard
+import com.example.billtracker.ui.components.PrivacyFooter
+import com.example.billtracker.ui.components.TransactionList
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
@@ -91,7 +62,6 @@ import com.example.billtracker.viewmodel.AnalysisViewModel
 import com.example.billtracker.viewmodel.ProfileViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlin.math.roundToInt
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.*
@@ -846,413 +816,6 @@ fun MainScreen(
     }
 }
 
-// ── 微信风格余额卡片 ──
-@Composable
-fun WeChatStyleBalanceCard(
-    income: Double,
-    expense: Double,
-    title: String = "今日净收入",
-    modifier: Modifier = Modifier,
-    isManualMode: Boolean = true,
-    onToggleMode: (() -> Unit)? = null,
-    onDateFilterClick: (() -> Unit)? = null,
-    onRefresh: (() -> Unit)? = null,
-    onSearchClick: (() -> Unit)? = null
-) {
-    val net = income - expense
-    val incomeLabel = "收入 ¥${"%.2f".format(income)}"
-    val expenseLabel = "支出 ¥${"%.2f".format(expense)}"
-    val netLabel = if (net >= 0) "净收入 ¥${"%.2f".format(net)}" else "净支出 ¥${"%.2f".format(-net)}"
-    val a11yBalanceDesc = "$title：$netLabel，$incomeLabel，$expenseLabel"
-
-    Card(
-        modifier = modifier.fillMaxWidth().clearAndSetSemantics {
-            contentDescription = a11yBalanceDesc
-        },
-        shape = RoundedCornerShape(20.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 3.dp),
-        colors = CardDefaults.cardColors(containerColor = CardBg())
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            // 小标题 + 日期筛选 + 手动/自动切换
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = title,
-                    fontSize = 12.sp,
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.weight(1f)
-                )
-                if (onSearchClick != null) {
-                    IconButton(
-                        onClick = onSearchClick,
-                        modifier = Modifier.size(40.dp)
-                    ) {
-                        Icon(
-                            Icons.Default.Search,
-                            contentDescription = "搜索",
-                            tint = SubtleText,
-                            modifier = Modifier.size(22.dp)
-                        )
-                    }
-                }
-                if (onDateFilterClick != null) {
-                    IconButton(
-                        onClick = onDateFilterClick,
-                        modifier = Modifier.size(40.dp)
-                    ) {
-                        Icon(
-                            Icons.Default.DateRange,
-                            contentDescription = "选择日期范围",
-                            tint = SubtleText,
-                            modifier = Modifier.size(22.dp)
-                        )
-                    }
-                }
-                if (!isManualMode && onRefresh != null) {
-                    IconButton(
-                        onClick = onRefresh,
-                        modifier = Modifier.size(40.dp)
-                    ) {
-                        Icon(
-                            Icons.Default.Refresh,
-                            contentDescription = "刷新",
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(22.dp)
-                        )
-                    }
-                }
-                if (onToggleMode != null) {
-                    Surface(
-                        shape = RoundedCornerShape(8.dp),
-                        color = DividerColor
-                    ) {
-                        Row(
-                            modifier = Modifier.height(32.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .fillMaxHeight()
-                                    .background(if (isManualMode) MaterialTheme.colorScheme.primary else Color.Transparent)
-                                    .clickable(enabled = !isManualMode) { onToggleMode() },
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    text = "手动",
-                                    fontSize = 13.sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = if (isManualMode) Color.White else SubtleText
-                                )
-                            }
-                            Box(
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .fillMaxHeight()
-                                    .background(if (!isManualMode) MaterialTheme.colorScheme.primary else Color.Transparent)
-                                    .clickable(enabled = isManualMode) { onToggleMode() },
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    text = "自动",
-                                    fontSize = 13.sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = if (!isManualMode) Color.White else SubtleText
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-            Spacer(modifier = Modifier.height(4.dp))
-
-            // 大金额（微信零钱风格）
-            Text(
-                text = if (net >= 0) "+¥%.2f".format(net) else "-¥%.2f".format(-net),
-                fontSize = 36.sp,
-                fontWeight = FontWeight.Bold,
-                color = if (net >= 0) IncomeGreen else ExpenseRed,
-                letterSpacing = 1.sp
-            )
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            // 分隔线
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(1.dp)
-                    .background(MaterialTheme.colorScheme.outline.copy(alpha = 0.5f))
-            )
-
-            Spacer(modifier = Modifier.height(14.dp))
-
-            // 收入/支出双栏（各占50%，整体放大）
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.weight(1f),
-                    horizontalArrangement = Arrangement.Center
-                ) {
-                    Text(
-                        text = "↑",
-                        fontSize = 22.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = IncomeGreen
-                    )
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Column {
-                        Text("收入", fontSize = 16.sp, color = SubtleText)
-                        Text(
-                            "¥%.2f".format(income),
-                            fontSize = 22.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = IncomeGreen
-                        )
-                    }
-                }
-                Box(
-                    modifier = Modifier
-                        .width(1.dp)
-                        .height(36.dp)
-                        .background(DividerColor)
-                )
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.weight(1f),
-                    horizontalArrangement = Arrangement.Center
-                ) {
-                    Text(
-                        text = "↓",
-                        fontSize = 22.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = ExpenseRed
-                    )
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Column {
-                        Text("支出", fontSize = 16.sp, color = SubtleText)
-                        Text(
-                            "¥%.2f".format(expense),
-                            fontSize = 22.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = ExpenseRed
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
-
-// ── 底部隐私文字 ──
-@Composable
-fun PrivacyFooter() {
-    val subtle = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        color = Color.Transparent
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 8.dp)
-                .clearAndSetSemantics {
-                    contentDescription = "你的隐私数据仅保存在本地，不会上传"
-                },
-            horizontalArrangement = Arrangement.Center,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(
-                Icons.Default.Lock,
-                contentDescription = null,
-                tint = subtle,
-                modifier = Modifier.size(12.dp)
-            )
-            Spacer(modifier = Modifier.width(4.dp))
-            Text(
-                text = "你的隐私数据仅保存在本地，不会上传",
-                fontSize = 11.sp,
-                color = subtle
-            )
-        }
-    }
-}
-
-// ── 交易列表 ──
-@Composable
-fun TransactionList(
-    transactions: List<TransactionEntity>,
-    emptyText: String,
-    onDelete: (Long) -> Unit,
-    onItemClick: (TransactionEntity) -> Unit,
-    modifier: Modifier = Modifier
-) {
-    val listState = rememberLazyListState()
-    val prevCount = remember { mutableIntStateOf(transactions.size) }
-
-    // 新增条目时自动滚动到顶部
-    LaunchedEffect(transactions.size) {
-        if (transactions.size > prevCount.intValue && transactions.isNotEmpty()) {
-            listState.animateScrollToItem(0)
-        }
-        prevCount.intValue = transactions.size
-    }
-
-    if (transactions.isEmpty()) {
-        val muted = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
-        val hint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
-        Box(
-            modifier = Modifier.fillMaxSize().then(modifier),
-            contentAlignment = Alignment.Center
-        ) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Icon(
-                    Icons.Default.Receipt,
-                    contentDescription = null,
-                    tint = muted,
-                    modifier = Modifier.size(56.dp)
-                )
-                Spacer(modifier = Modifier.height(12.dp))
-                Text(
-                    text = emptyText,
-                    color = muted,
-                    fontSize = 15.sp,
-                    textAlign = TextAlign.Center
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = "点击右下角 + 手动记账",
-                    color = hint,
-                    fontSize = 13.sp,
-                    textAlign = TextAlign.Center
-                )
-            }
-        }
-    } else {
-        LazyColumn(
-            state = listState,
-            modifier = Modifier.fillMaxSize().then(modifier),
-            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            items(transactions, key = { it.id }) { transaction ->
-                TransactionItem(
-                    transaction = transaction,
-                    onDelete = { onDelete(transaction.id) },
-                    onItemClick = { onItemClick(transaction) }
-                )
-            }
-        }
-    }
-}
-
-// ── 带左滑操作的交易条目 ──
-@Composable
-fun TransactionItem(
-    transaction: TransactionEntity,
-    onDelete: () -> Unit,
-    onItemClick: () -> Unit
-) {
-    val offsetX = remember { Animatable(0f) }
-    val scope = rememberCoroutineScope()
-    val buttonAreaPx = with(LocalDensity.current) { 180.dp.toPx() }
-
-    Box(modifier = Modifier.clipToBounds().fillMaxWidth()) {
-
-        // ── 背景层：左滑后露出的操作按钮 ──
-        Row(
-            modifier = Modifier
-                .matchParentSize()
-                .padding(end = 12.dp),
-            horizontalArrangement = Arrangement.End,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // 详情按钮（打开详情卡片）
-            Surface(
-                onClick = {
-                    scope.launch { offsetX.animateTo(0f) }
-                    onItemClick()
-                },
-                shape = RoundedCornerShape(10.dp),
-                color = MaterialTheme.colorScheme.primary
-            ) {
-                Row(
-                    modifier = Modifier.padding(horizontal = 18.dp, vertical = 14.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        Icons.AutoMirrored.Filled.Message,
-                        contentDescription = "查看详情",
-                        tint = Color.White,
-                        modifier = Modifier.size(16.dp)
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text("详情", color = Color.White, fontWeight = FontWeight.Medium, fontSize = 14.sp)
-                }
-            }
-            Spacer(modifier = Modifier.width(8.dp))
-            // 删除按钮
-            Surface(
-                onClick = {
-                    scope.launch { offsetX.animateTo(0f) }
-                    onDelete()
-                },
-                shape = RoundedCornerShape(10.dp),
-                color = ExpenseRed
-            ) {
-                Row(
-                    modifier = Modifier.padding(horizontal = 18.dp, vertical = 14.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        Icons.Default.Delete,
-                        contentDescription = "删除",
-                        tint = Color.White,
-                        modifier = Modifier.size(16.dp)
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text("删除", color = Color.White, fontWeight = FontWeight.Medium, fontSize = 14.sp)
-                }
-            }
-        }
-
-        // ── 前景层：卡片（可点击进入详情、可左滑） ──
-        TransactionCard(
-            transaction = transaction,
-            onClick = onItemClick,
-            modifier = Modifier
-                .offset { IntOffset(offsetX.value.roundToInt(), 0) }
-                .pointerInput(Unit) {
-                    detectHorizontalDragGestures(
-                        onDragEnd = {
-                            scope.launch {
-                                if (offsetX.value < -buttonAreaPx / 2) {
-                                    offsetX.animateTo(-buttonAreaPx, tween(200))
-                                } else {
-                                    offsetX.animateTo(0f, tween(200))
-                                }
-                            }
-                        },
-                        onHorizontalDrag = { change, dragAmount ->
-                            change.consume()
-                            scope.launch {
-                                offsetX.snapTo(
-                                    (offsetX.value + dragAmount).coerceIn(-buttonAreaPx, 0f)
-                                )
-                            }
-                        }
-                    )
-                }
-                .fillMaxWidth()
-        )
-    }
-}
 
 
 

@@ -20,15 +20,12 @@ import com.example.billtracker.data.TransactionEntity
 import com.example.billtracker.data.TransactionSource
 import com.example.billtracker.data.TransactionType
 import com.example.billtracker.ui.AlipayBlue
+import com.example.billtracker.ui.CardBg
 import com.example.billtracker.ui.ExpenseRed
 import com.example.billtracker.ui.IncomeGreen
 import com.example.billtracker.ui.WechatGreen
 import java.text.SimpleDateFormat
 import java.util.*
-
-@Composable
-internal fun CardBg(): Color = if (isSystemInDarkTheme()) Color(0xFF2A2A2A).copy(alpha = 0.88f)
-else MaterialTheme.colorScheme.surface
 
 @Composable
 fun TransactionDetailCard(
