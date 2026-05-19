@@ -1,10 +1,19 @@
 {
+<<<<<<< HEAD
   "versionCode": 10,
   "versionName": "0.9.0",
   "releaseNotes": "v0.9.0 更新内容：\n- 重构: 包名迁移至 com.jizhang.tracker\n- 优化: 移除 API Key 配置流程，开箱即用\n- AI 记账本地兜底（API 失败时自动使用规则解析）\n- 修复: OCR 导入偶发死锁问题\n- 新增: 数据备份 SHA-256 完整性校验\n- 新增: 单元测试 / 界面测试覆盖\n- 优化: 数据库查询性能（添加索引）\n- 优化: 息屏状态下的通知监听稳定性\n- 无障碍: Compose Semantics 语义支持",
   "md5": "",
   "lanzouUrl": "https://wwbnt.lanzoul.com/iayMx3pv51cd",
   "lanzouPassword": "7dcb",
+=======
+  "versionCode": 9,
+  "versionName": "0.8.5",
+  "releaseNotes": "v0.8 更新内容：\n- 账单导入功能（CSV / 截图批量 OCR）\n- AI 聊天式记账（DeepSeek）\n- 自定义主题背景（图片 + 毛玻璃效果）\n- 数据导出（CSV + PNG 图片）\n- 备份恢复（含计划和设置）\n- 安全性改进",
+  "md5": "",
+  "lanzouUrl": "https://wwbnt.lanzoul.com/i9QHX3pv06xe",
+  "lanzouPassword": "d327",
+>>>>>>> 7420f76 (chore: update lanzou download link to v0.8.5)
   "sources": [
     {
       "url": "https://github.com/2350471581/-/releases/download/v0.9.0/default.apk",
