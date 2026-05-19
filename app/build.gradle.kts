@@ -2,6 +2,19 @@ plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     id("kotlin-kapt")
+    id("com.google.dagger.hilt.android")
+}
+
+fun getLocalProperty(key: String, default: String): String {
+    val file = rootProject.file("local.properties")
+    if (!file.exists()) return default
+    for (line in file.readLines()) {
+        val parts = line.split("=", limit = 2)
+        if (parts.size == 2 && parts[0].trim() == key) {
+            return parts[1].trim()
+        }
+    }
+    return default
 }
 
 android {
@@ -14,20 +27,22 @@ android {
         targetSdk = 34
         versionCode = 8
         versionName = "0.8"
+        // API key is now managed at runtime via ApiKeyManager (default bundled + user override in settings)
     }
 
     signingConfigs {
         create("release") {
             storeFile = file("../release.keystore")
-            storePassword = "123456"
-            keyAlias = "billtracker"
-            keyPassword = "123456"
+            storePassword = project.findProperty("RELEASE_STORE_PASSWORD") as String? ?: System.getenv("RELEASE_STORE_PASSWORD") ?: ""
+            keyAlias = project.findProperty("RELEASE_KEY_ALIAS") as String? ?: "billtracker"
+            keyPassword = project.findProperty("RELEASE_KEY_PASSWORD") as String? ?: System.getenv("RELEASE_KEY_PASSWORD") ?: ""
         }
     }
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
             signingConfig = signingConfigs.getByName("release")
         }
@@ -52,6 +67,7 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 
     composeOptions {
@@ -86,4 +102,20 @@ dependencies {
 
     // Palette for color extraction
     implementation("androidx.palette:palette-ktx:1.0.0")
+
+    // Hilt DI
+    implementation("com.google.dagger:hilt-android:2.50")
+    kapt("com.google.dagger:hilt-android-compiler:2.50")
+    implementation("androidx.hilt:hilt-navigation-compose:1.1.0")
+    implementation("androidx.navigation:navigation-compose:2.7.7")
+
+    // Testing
+    testImplementation("junit:junit:4.13.2")
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.7.3")
+    testImplementation("io.mockk:mockk:1.13.9")
+    testImplementation("androidx.arch.core:core-testing:2.2.0")
+}
+
+kapt {
+    correctErrorTypes = true
 }
